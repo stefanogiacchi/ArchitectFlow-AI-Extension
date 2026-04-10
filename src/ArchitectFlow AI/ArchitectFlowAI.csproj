@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <RootNamespace>ArchitectFlowAI</RootNamespace>
+    <AssemblyName>ArchitectFlowAI</AssemblyName>
+    <GeneratePkgDefFile>true</GeneratePkgDefFile>
+    <IncludeAssemblyInVSIXContainer>true</IncludeAssemblyInVSIXContainer>
+    <IncludeDebugSymbolsInVSIXContainer>false</IncludeDebugSymbolsInVSIXContainer>
+    <CopyBuildOutputToOutputDirectory>true</CopyBuildOutputToOutputDirectory>
+    <StartAction>Program</StartAction>
+    <StartProgram>$(DevEnvDir)devenv.exe</StartProgram>
+    <StartArguments>/rootsuffix Exp</StartArguments>
+    <UseCodebase>true</UseCodebase>
+    <Nullable>disable</Nullable>
+    <LangVersion>8.0</LangVersion>
+  </PropertyGroup>
+
+  <!--
+    NuGet packages richiesti:
+    - Microsoft.VisualStudio.SDK          (Shell, EnvDTE, ToolWindowPane)
+    - Microsoft.VSSDK.BuildTools          (generazione .vsix)
+  -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.VisualStudio.SDK" Version="17.6.36389" ExcludeAssets="runtime"/>
+    <PackageReference Include="Microsoft.VSSDK.BuildTools" Version="17.6.2164" ExcludeAssets="runtime"/>
+  </ItemGroup>
+
+  <!-- XAML -->
+  <ItemGroup>
+    <Page Include="UI\ArchitectWindowControl.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+  </ItemGroup>
+
+  <!-- Manifest VSIX -->
+  <ItemGroup>
+    <None Include="source.extension.vsixmanifest">
+      <SubType>Designer</SubType>
+    </None>
+  </ItemGroup>
+
+</Project>

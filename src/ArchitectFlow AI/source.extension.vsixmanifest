@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011">
+  <Metadata>
+    <Identity
+      Id="ArchitectFlowAI.a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+      Version="1.0.0"
+      Language="en-US"
+      Publisher="YourCompany"/>
+    <DisplayName>ArchitectFlow AI</DisplayName>
+    <Description>Scaffolding automatico CQRS + Dapper + Mediator guidato da AI.
+Mappa Acceptance Criteria e SQL Wiki in codice C# pronto per la produzione.</Description>
+    <Tags>CQRS, Dapper, Mediator, Scaffolding, AI, Copilot</Tags>
+  </Metadata>
+  <Installation>
+    <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[17.0,18.0)"/>
+  </Installation>
+  <Dependencies>
+    <Dependency Id="Microsoft.Framework.NDP"
+                DisplayName=".NET Framework 4.7.2+"
+                Version="[4.7.2,)" />
+    <Dependency Id="Microsoft.VisualStudio.MPF.17.0"
+                DisplayName="Visual Studio MPF 17.0"
+                Version="[17.0,18.0)"/>
+  </Dependencies>
+  <Assets>
+    <Asset Type="Microsoft.VisualStudio.VsPackage"
+           d:Source="Project"
+           d:ProjectName="%CurrentProject%"
+           Path="|%CurrentProject%;PkgdefProjectOutputGroup|"/>
+    <Asset Type="Microsoft.VisualStudio.MefComponent"
+           d:Source="Project"
+           d:ProjectName="%CurrentProject%"
+           Path="|%CurrentProject%|"/>
+  </Assets>
+</PackageManifest>
