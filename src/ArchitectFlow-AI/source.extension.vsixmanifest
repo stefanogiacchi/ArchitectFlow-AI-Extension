@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PackageManifest Version="2.0.0"
+                 xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011"
+                 xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
+
+    <Metadata>
+        <Identity Id="ArchitectFlow-AI-Extension.a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                  Version="2.0.0"
+                  Language="it-IT"
+                  Publisher="Stefano Giacchi"/>
+
+        <DisplayName>ArchitectFlow AI</DisplayName>
+
+        <Description xml:space="preserve">
+Estensione per Visual Studio Community che automatizza lo scaffolding di API basate su
+pattern CQRS, Dapper e Mediator tramite AI (Claude).
+
+NOVITÀ v2.0 — Solution Explorer Integration:
+  • Click destro su file/cartelle → "Aggiungi a ArchitectFlow References"
+  • Selezione multipla di file (Ctrl+Click / Shift+Click) aggiunta in blocco
+  • Trascina file dal Solution Explorer nel pannello
+  • I file selezionati diventano "contesto vincolante" per tutto il codice generato
+  • Il codice AI rispetta naming convention, namespace e pattern del codice esistente
+
+Modalità di generazione:
+  • CQRS Command (con FluentValidation)
+  • CQRS Query (con Dapper)
+  • API Endpoint (Minimal/Controller)
+  • Repository (interfaccia + implementazione Dapper)
+  • Dapper SQL Query
+  • MediatR Handler
+  • Freeform
+        </Description>
+
+        <MoreInfo>https://github.com/stefanogiacchi/ArchitectFlow-AI-Extension</MoreInfo>
+
+        <Icon>Resources\logo.png</Icon>
+
+        <Tags>CQRS, Dapper, Mediator, AI, scaffolding, code generation, Claude, Anthropic</Tags>
+    </Metadata>
+
+    <Installation>
+        <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[17.0,]">
+            <ProductArchitecture>amd64</ProductArchitecture>
+        </InstallationTarget>
+        <InstallationTarget Id="Microsoft.VisualStudio.Professional" Version="[17.0,]">
+            <ProductArchitecture>amd64</ProductArchitecture>
+        </InstallationTarget>
+        <InstallationTarget Id="Microsoft.VisualStudio.Enterprise" Version="[17.0,]">
+            <ProductArchitecture>amd64</ProductArchitecture>
+        </InstallationTarget>
+    </Installation>
+
+    <Dependencies>
+        <Dependency Id="Microsoft.Framework.NDP"
+                    DisplayName=".NET Framework"
+                    d:Source="Auto"
+                    Version="[4.7.2,)"/>
+    </Dependencies>
+
+    <Prerequisites>
+        <Prerequisite Id="Microsoft.VisualStudio.Component.CoreEditor"
+                       Version="[17.0,19.0)"
+                       DisplayName="Visual Studio core editor"/>
+    </Prerequisites>
+
+<Assets>
+    <Asset Type="Microsoft.VisualStudio.VsPackage" 
+           d:Source="Project" 
+           d:ProjectName="ArchitectFlow_AI" 
+           Path="|ArchitectFlow_AI;PkgdefProjectOutputGroup|"/>
+    <Asset Type="Microsoft.VisualStudio.MefComponent" 
+           d:Source="Project" 
+           d:ProjectName="ArchitectFlow_AI" 
+           Path="|ArchitectFlow_AI|"/>
+</Assets>
+
+</PackageManifest>

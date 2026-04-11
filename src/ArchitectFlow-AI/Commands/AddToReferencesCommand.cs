@@ -27,10 +27,22 @@ namespace ArchitectFlow_AI.Commands
             fileCmd.BeforeQueryStatus += OnQueryStatus_Files;
             commandService.AddCommand(fileCmd);
 
+            // Multi-select: same handler as single file (GetSelectedFiles handles both)
+            var multiCmd = new OleMenuCommand(OnAddFilesExecute,
+                new CommandID(PackageGuids.CommandSet, PackageCommandIds.AddToReferencesMulti));
+            multiCmd.BeforeQueryStatus += OnQueryStatus_Files;
+            commandService.AddCommand(multiCmd);
+
             var folderCmd = new OleMenuCommand(OnAddFolderExecute,
                 new CommandID(PackageGuids.CommandSet, PackageCommandIds.AddFolderToReferences));
             folderCmd.BeforeQueryStatus += OnQueryStatus_Folders;
             commandService.AddCommand(folderCmd);
+
+            // Project node: reuses folder logic with project root path
+            var projCmd = new OleMenuCommand(OnAddFolderExecute,
+                new CommandID(PackageGuids.CommandSet, PackageCommandIds.AddProjectToReferences));
+            projCmd.BeforeQueryStatus += OnQueryStatus_Folders;
+            commandService.AddCommand(projCmd);
         }
 
         public static async Task InitializeAsync(AsyncPackage package)
