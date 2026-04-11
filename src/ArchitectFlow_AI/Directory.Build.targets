@@ -5,6 +5,13 @@
     so the VSSDK's PrepareForRunDependsOn additions (CreateVsixContainer,
     DeployVsixExtensionFiles, GeneratePkgDef, etc.) won't be overwritten
     by Microsoft.Common.CurrentVersion.targets.
+
+    IMPORTANT: The <Import> of Microsoft.VsSDK.targets that previously appeared
+    at the bottom of ArchitectFlow_AI.csproj has been REMOVED. This file is the
+    single authoritative import point. Having it in both places caused the VSSDK
+    build tasks (especially GeneratePkgDef) to run with a corrupted target graph,
+    producing either an empty pkgdef or skipping it entirely — which is why the
+    extension's menu items never appeared in Visual Studio.
   -->
   <Import Project="$(VSToolsPath)\VSSDK\Microsoft.VsSDK.targets"
           Condition="'$(VSToolsPath)' != '' and Exists('$(VSToolsPath)\VSSDK\Microsoft.VsSDK.targets')" />

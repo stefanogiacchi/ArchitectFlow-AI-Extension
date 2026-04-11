@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<CommandTable xmlns="http://schemas.microsoft.com/VisualStudio/2005-10-18/CommandTable" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+<CommandTable xmlns="http://schemas.microsoft.com/VisualStudio/2005-10-18/CommandTable"
+              xmlns:xs="http://www.w3.org/2001/XMLSchema">
 
   <Extern href="stdidcmd.h"/>
   <Extern href="vsshlids.h"/>
@@ -24,18 +25,38 @@
       <Group guid="guidArchitectFlowCmdSet" id="grpArchitectFlowViewOtherWin" priority="0x0100">
         <Parent guid="guidSHLMainMenu" id="IDM_VS_CSCD_WINDOWS"/>
       </Group>
+
+     
     </Groups>
 
     <Buttons>
-      <Button guid="guidArchitectFlowCmdSet" id="OpenArchitectFlow" priority="0x0100" type="Button">
+      <!--
+        BUG FIX 1 — OpenArchitectFlow was missing the DefaultInvisible +
+        DynamicVisibility pair. Without these flags VS only reads the static
+        parent-group placement and ignores the VisibilityConstraints section,
+        so the button was never re-evaluated and could stay hidden.
+
+        BUG FIX 2 — The VisibilityConstraints section used symbolic names
+        (UICONTEXT_NoSolution / UICONTEXT_SolutionExists) that the VSCT
+        compiler does NOT resolve from the included .h files in this context.
+        Unresolved context GUIDs default to "never show", so the button was
+        invisible. Fixed by using the real GUID values defined in the Symbols
+        section below (guidUIContextNoSolution / guidUIContextSolutionExists).
+      -->
+      <Button guid="guidArchitectFlowCmdSet" id="OpenArchitectFlow"
+              priority="0x0100" type="Button">
         <Parent guid="guidArchitectFlowCmdSet" id="grpArchitectFlowTools"/>
         <Icon guid="guidArchitectFlowImages" id="bmpIconArchitectFlow"/>
+        <CommandFlag>DefaultInvisible</CommandFlag>
+        <CommandFlag>DynamicVisibility</CommandFlag>
         <Strings>
           <ButtonText>ArchitectFlow AI</ButtonText>
           <MenuText>ArchitectFlow AI</MenuText>
         </Strings>
       </Button>
-      <Button guid="guidArchitectFlowCmdSet" id="AddToReferences" priority="0x0100" type="Button">
+
+      <Button guid="guidArchitectFlowCmdSet" id="AddToReferences"
+              priority="0x0100" type="Button">
         <Parent guid="guidArchitectFlowCmdSet" id="grpArchitectFlowFile"/>
         <Icon guid="guidArchitectFlowImages" id="bmpIconAdd"/>
         <CommandFlag>DynamicVisibility</CommandFlag>
@@ -44,7 +65,9 @@
           <MenuText>📎 Aggiungi a ArchitectFlow References</MenuText>
         </Strings>
       </Button>
-      <Button guid="guidArchitectFlowCmdSet" id="AddToReferencesMulti" priority="0x0100" type="Button">
+
+      <Button guid="guidArchitectFlowCmdSet" id="AddToReferencesMulti"
+              priority="0x0100" type="Button">
         <Parent guid="guidArchitectFlowCmdSet" id="grpArchitectFlowMultiSelect"/>
         <Icon guid="guidArchitectFlowImages" id="bmpIconAdd"/>
         <CommandFlag>DynamicVisibility</CommandFlag>
@@ -53,7 +76,9 @@
           <MenuText>📎 Aggiungi selezione a ArchitectFlow References</MenuText>
         </Strings>
       </Button>
-      <Button guid="guidArchitectFlowCmdSet" id="AddFolderToReferences" priority="0x0100" type="Button">
+
+      <Button guid="guidArchitectFlowCmdSet" id="AddFolderToReferences"
+              priority="0x0100" type="Button">
         <Parent guid="guidArchitectFlowCmdSet" id="grpArchitectFlowFolder"/>
         <Icon guid="guidArchitectFlowImages" id="bmpIconFolder"/>
         <CommandFlag>DynamicVisibility</CommandFlag>
@@ -62,7 +87,9 @@
           <MenuText>📂 Aggiungi cartella a ArchitectFlow References</MenuText>
         </Strings>
       </Button>
-      <Button guid="guidArchitectFlowCmdSet" id="ClearReferences" priority="0x0200" type="Button">
+
+      <Button guid="guidArchitectFlowCmdSet" id="ClearReferences"
+              priority="0x0200" type="Button">
         <Parent guid="guidArchitectFlowCmdSet" id="grpArchitectFlowTools"/>
         <Icon guid="guidArchitectFlowImages" id="bmpIconClear"/>
         <Strings>
@@ -73,38 +100,69 @@
     </Buttons>
 
     <Bitmaps>
-      <Bitmap guid="guidArchitectFlowImages" href="Resources\Images.png" usedList="bmpIconArchitectFlow, bmpIconAdd, bmpIconFolder, bmpIconClear"/>
+      <Bitmap guid="guidArchitectFlowImages" href="Resources\Images.png"
+              usedList="bmpIconArchitectFlow, bmpIconAdd, bmpIconFolder, bmpIconClear"/>
     </Bitmaps>
   </Commands>
+ 
 
+  <CommandPlacements>
+    <CommandPlacement guid="guidArchitectFlowCmdSet" id="OpenArchitectFlow" priority="0x0100">
+      <Parent guid="guidArchitectFlowCmdSet" id="grpArchitectFlowViewOtherWin"/>
+    </CommandPlacement>
+  </CommandPlacements>
+
+
+  <!--
+    BUG FIX: Use actual GUID values (defined in Symbols below) instead of
+    symbolic macro names. The VSCT compiler resolves GuidSymbol names from
+    the Symbols section but does NOT expand C-macro names from .h Externs
+    when they appear in the context="" attribute of VisibilityItem.
+  -->
   <VisibilityConstraints>
-    <VisibilityItem guid="guidArchitectFlowCmdSet" id="OpenArchitectFlow" context="UICONTEXT_NoSolution"/>
-    <VisibilityItem guid="guidArchitectFlowCmdSet" id="OpenArchitectFlow" context="UICONTEXT_SolutionExists"/>
+    <VisibilityItem guid="guidArchitectFlowCmdSet" id="OpenArchitectFlow"
+                    context="guidUIContextNoSolution"/>
+    <VisibilityItem guid="guidArchitectFlowCmdSet" id="OpenArchitectFlow"
+                    context="guidUIContextSolutionExists"/>
   </VisibilityConstraints>
 
   <Symbols>
-    <GuidSymbol name="guidArchitectFlowPackage" value="{a1b2c3d4-e5f6-7890-abcd-ef1234567890}"/>
-    <GuidSymbol name="guidArchitectFlowCmdSet" value="{b2c3d4e5-f6a7-8901-bcde-f12345678901}">
-      <IDSymbol name="grpArchitectFlowFile" value="0x1010"/>
-      <IDSymbol name="grpArchitectFlowFolder" value="0x1011"/>
-      <IDSymbol name="grpArchitectFlowProject" value="0x1012"/>
+    <GuidSymbol name="guidArchitectFlowPackage"
+                value="{a1b2c3d4-e5f6-7890-abcd-ef1234567890}"/>
+
+    <GuidSymbol name="guidArchitectFlowCmdSet"
+                value="{b2c3d4e5-f6a7-8901-bcde-f12345678901}">
+      <IDSymbol name="grpArchitectFlowFile"        value="0x1010"/>
+      <IDSymbol name="grpArchitectFlowFolder"      value="0x1011"/>
+      <IDSymbol name="grpArchitectFlowProject"     value="0x1012"/>
       <IDSymbol name="grpArchitectFlowMultiSelect" value="0x1013"/>
-      <IDSymbol name="grpArchitectFlowTools" value="0x1014"/>
+      <IDSymbol name="grpArchitectFlowTools"       value="0x1014"/>
       <IDSymbol name="grpArchitectFlowViewOtherWin" value="0x1015"/>
-      <IDSymbol name="AddToReferences" value="0x0100"/>
-      <IDSymbol name="AddFolderToReferences" value="0x0101"/>
-      <IDSymbol name="ClearReferences" value="0x0102"/>
-      <IDSymbol name="OpenArchitectFlow" value="0x0103"/>
-      <IDSymbol name="RemoveReference" value="0x0104"/>
-      <IDSymbol name="AddToReferencesMulti" value="0x0105"/>
-      <IDSymbol name="AddProjectToReferences" value="0x0106"/>
+      <IDSymbol name="AddToReferences"             value="0x0100"/>
+      <IDSymbol name="AddFolderToReferences"       value="0x0101"/>
+      <IDSymbol name="ClearReferences"             value="0x0102"/>
+      <IDSymbol name="OpenArchitectFlow"           value="0x0103"/>
+      <IDSymbol name="RemoveReference"             value="0x0104"/>
+      <IDSymbol name="AddToReferencesMulti"        value="0x0105"/>
+      <IDSymbol name="AddProjectToReferences"      value="0x0106"/>
     </GuidSymbol>
-    <GuidSymbol name="guidArchitectFlowImages" value="{c3d4e5f6-a7b8-9012-cdef-123456789012}">
+
+    <GuidSymbol name="guidArchitectFlowImages"
+                value="{c3d4e5f6-a7b8-9012-cdef-123456789012}">
       <IDSymbol name="bmpIconArchitectFlow" value="1"/>
-      <IDSymbol name="bmpIconAdd" value="2"/>
-      <IDSymbol name="bmpIconFolder" value="3"/>
-      <IDSymbol name="bmpIconClear" value="4"/>
+      <IDSymbol name="bmpIconAdd"           value="2"/>
+      <IDSymbol name="bmpIconFolder"        value="3"/>
+      <IDSymbol name="bmpIconClear"         value="4"/>
     </GuidSymbol>
+
+    <!--
+      Real GUIDs for the VS UI contexts referenced in VisibilityConstraints.
+      Source: Microsoft.VisualStudio.VSConstants / UIContextGuids80.
+    -->
+    <GuidSymbol name="guidUIContextNoSolution"
+                value="{adfc4e64-0397-11d1-9f4e-00a0c911004f}"/>
+    <GuidSymbol name="guidUIContextSolutionExists"
+                value="{f1536ef8-92ec-443c-9ed7-fdadf150da82}"/>
   </Symbols>
 
 </CommandTable>

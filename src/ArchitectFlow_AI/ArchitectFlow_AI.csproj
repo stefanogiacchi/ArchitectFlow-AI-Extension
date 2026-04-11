@@ -22,6 +22,12 @@
     <LangVersion>latest</LangVersion>
     <UseWPF>true</UseWPF>
     <EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
+
+    <VsctExe>$(NuGetPackageRoot)microsoft.vssdk.buildtools\17.10.2185\tools\vssdk\bin\vsct.exe</VsctExe>
+    <VsctExe Condition="!Exists('$(VsctExe)') and '$(VSINSTALLDIR)' != ''">$(VSINSTALLDIR)VSSDK\VisualStudioIntegration\Tools\Bin\vsct.exe</VsctExe>
+
+    <VsctInclude>$(NuGetPackageRoot)microsoft.vssdk.buildtools\17.10.2185\tools\vssdk\inc</VsctInclude>
+    <VsctInclude Condition="!Exists('$(VsctInclude)')">$(VSToolsPath)\VSSDK\inc</VsctInclude>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
@@ -31,11 +37,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <VSCTCompile Include="ArchitectFlow.vsct">
-      <ResourceName>Menus.ctmenu</ResourceName>
-      <Generator>VsctGenerator</Generator>
-    </VSCTCompile>
-
+    <None Include="ArchitectFlow.vsct" />
     <ApplicationDefinition Remove="App.xaml" />
     <Page Remove="App.xaml" />
   </ItemGroup>
@@ -47,8 +49,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.VisualStudio.SDK" Version="17.0.32112.339" ExcludeAssets="runtime" />
-    <PackageReference Include="Microsoft.VSSDK.BuildTools" Version="17.10.2185" ExcludeAssets="runtime" />
+    <PackageReference Include="Microsoft.VisualStudio.SDK"
+                      Version="17.0.32112.339" ExcludeAssets="runtime" />
+    <PackageReference Include="Microsoft.VSSDK.BuildTools"
+                      Version="17.10.2185" ExcludeAssets="runtime" />
     <PackageReference Include="System.Text.Json" Version="8.0.5" />
   </ItemGroup>
 
@@ -73,5 +77,50 @@
     </Content>
   </ItemGroup>
 
-  <Import Project="$(VSToolsPath)\VSSDK\Microsoft.VsSDK.targets" Condition="'$(VSToolsPath)' != ''" />
+  <!--
+    ══════════════════════════════════════════════════════════════════
+    ROOT CAUSE — Why EmbeddedResource dynamic items don't work in WPF:
+
+    In WPF SDK-style projects, CoreCompile does NOT read @(EmbeddedResource)
+    directly. Instead it reads:
+      @(ManifestResourceWithNoCulture)
+      @(ManifestNonResxWithNoCultureOnDisk)
+
+    These collections are built by SplitResourcesByCulture and related
+    targets that run BEFORE CoreCompile. By the time our CompileVsct
+    target adds to @(EmbeddedResource), those intermediate collections
+    are already frozen and csc.exe never sees the new item.
+
+    FINAL FIX: Add the compiled .cto binary directly to
+    @(ManifestNonResxWithNoCultureOnDisk), which is exactly what
+    csc.exe reads for pre-compiled binary resources (/resource: flag).
+    This is the same collection that _EmptyResource.resources ends up in.
+    ══════════════════════════════════════════════════════════════════
+  -->
+  <Target Name="CompileVsct" BeforeTargets="CoreCompile">
+
+    <Error Condition="!Exists('$(VsctExe)')"
+           Text="vsct.exe not found at: $(VsctExe)" />
+
+    <MakeDir Directories="$(IntermediateOutputPath)" />
+
+    <Exec Command="&quot;$(VsctExe)&quot; &quot;$(MSBuildProjectDirectory)\ArchitectFlow.vsct&quot; &quot;$(IntermediateOutputPath)ArchitectFlow.cto&quot; -nologo -I&quot;$(VsctInclude)&quot;"
+          ConsoleToMSBuild="true" />
+
+    <!--
+      Add directly to ManifestNonResxWithNoCultureOnDisk — the item group
+      that csc.exe reads for binary resources in WPF projects.
+      LogicalName must match [ProvideMenuResource("Menus.ctmenu", 1)] exactly.
+    -->
+    <ItemGroup>
+      <ManifestNonResxWithNoCultureOnDisk Include="$(IntermediateOutputPath)ArchitectFlow.cto">
+        <LogicalName>Menus.ctmenu</LogicalName>
+        <ManifestResourceName>Menus.ctmenu</ManifestResourceName>
+      </ManifestNonResxWithNoCultureOnDisk>
+    </ItemGroup>
+
+    <Message Text="[ArchitectFlow] ✓ Menus.ctmenu → ManifestNonResxWithNoCultureOnDisk"
+             Importance="high" />
+  </Target>
+
 </Project>
