@@ -14,31 +14,27 @@ namespace ArchitectFlow_AI
 {
     [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
     [Guid(PackageGuids.PackageGuidString)]
-    // Carica i menu definiti nel file VSCT
     [ProvideMenuResource("Menus.ctmenu", 1)]
-    // Registra la tua ToolWindow WPF
     [ProvideToolWindow(typeof(ArchitectFlowToolWindow),
         Style = VsDockStyle.Tabbed,
         Window = EnvDTE.Constants.vsWindowKindSolutionExplorer,
         Orientation = ToolWindowOrientation.Right)]
-    // Fondamentale: Carica l'estensione in modo asincrono quando una soluzione è aperta
+    // BUG FIX: also auto-load in NoSolution so the Tools menu button is live
+    // before any solution is opened (the VSCT VisibilityItem already declares
+    // the command visible in UICONTEXT_NoSolution, but the command handler was
+    // never wired up in that context because the package didn't load).
+    [ProvideAutoLoad(UIContextGuids80.NoSolution, PackageAutoLoadFlags.BackgroundLoad)]
     [ProvideAutoLoad(UIContextGuids80.SolutionExists, PackageAutoLoadFlags.BackgroundLoad)]
-    // Registra la pagina delle opzioni (ArchitectFlow AI > General)
     [ProvideOptionPage(typeof(ArchitectFlowOptionsPage), "ArchitectFlow AI", "General", 0, 0, true)]
     public sealed class ArchitectFlowPackage : AsyncPackage
-    { 
-      public static ArchitectFlowPackage Instance { get; private set; }
+    {
+        public static ArchitectFlowPackage Instance { get; private set; }
 
         public ReferenceFileManager ReferenceFileManager { get; private set; }
-
         public ClaudeApiService ClaudeApiService { get; private set; }
-
         public CopilotBridgeService CopilotBridge { get; private set; }
-
         public BuildOrchestratorService BuildOrchestrator { get; private set; }
-
         public OutputWindowLogger OutputLogger { get; private set; }
-
         public AgentLoopService AgentLoop { get; private set; }
 
         protected override async Task InitializeAsync(
@@ -48,7 +44,6 @@ namespace ArchitectFlow_AI
             try
             {
                 await base.InitializeAsync(cancellationToken, progress);
-
                 await JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
 
                 Instance = this;
@@ -89,7 +84,8 @@ namespace ArchitectFlow_AI
                     var solution = (IVsSolution)await GetServiceAsync(typeof(SVsSolution));
                     if (solution != null)
                     {
-                        solution.AdviseSolutionEvents(new SolutionEventsHandler(ReferenceFileManager), out _);
+                        solution.AdviseSolutionEvents(
+                            new SolutionEventsHandler(ReferenceFileManager), out _);
                     }
                 }
                 catch (Exception ex)
@@ -112,12 +108,11 @@ namespace ArchitectFlow_AI
         public async Task<ArchitectFlowToolWindow> GetOrCreateToolWindowAsync()
         {
             await JoinableTaskFactory.SwitchToMainThreadAsync();
-            var window = (ArchitectFlowToolWindow)FindToolWindow(typeof(ArchitectFlowToolWindow), 0, true);
+            var window = (ArchitectFlowToolWindow)FindToolWindow(
+                typeof(ArchitectFlowToolWindow), 0, true);
 
             if (window?.Content is ArchitectFlowToolWindowControl control)
-            {
                 control.EnsureInitialized();
-            }
 
             return window;
         }
@@ -127,9 +122,7 @@ namespace ArchitectFlow_AI
             await JoinableTaskFactory.SwitchToMainThreadAsync();
             var window = await GetOrCreateToolWindowAsync();
             if (window?.Frame is IVsWindowFrame frame)
-            {
                 ErrorHandler.ThrowOnFailure(frame.Show());
-            }
         }
     }
 }

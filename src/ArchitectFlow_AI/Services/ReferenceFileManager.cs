@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using ArchitectFlow_AI.Models;
+using Microsoft.VisualStudio.Shell;
 
 namespace ArchitectFlow_AI.Services
 {
@@ -20,7 +21,6 @@ namespace ArchitectFlow_AI.Services
             = new ObservableCollection<ReferenceFile>();
 
         public int Count { get { lock (_lock) return _files.Count; } }
-
         public bool IsEmpty => Count == 0;
 
         public bool TryAdd(string fullPath, string projectName = null)
@@ -34,17 +34,21 @@ namespace ArchitectFlow_AI.Services
 
             lock (_lock)
             {
-                if (_files.ContainsKey(fullPath))
-                    return false;
-
-                if (_files.Count >= maxFiles)
-                {
-                    NotifyMaxReached(maxFiles);
-                    return false;
-                }
+                if (_files.ContainsKey(fullPath)) return false;
+                if (_files.Count >= maxFiles) { NotifyMaxReached(maxFiles); return false; }
 
                 var info = new FileInfo(fullPath);
-                var solutionDir = GetSolutionDirectory();
+
+                // BUG FIX: GetSolutionDirectory() requires the UI thread.
+                // Resolve it safely: if we're already on UI thread use it directly,
+                // otherwise run a blocking switch to UI thread (still safe here
+                // because we hold no VS locks that could deadlock).
+                string solutionDir = null;
+                ThreadHelper.JoinableTaskFactory.Run(async () =>
+                {
+                    await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                    solutionDir = GetSolutionDirectory();
+                });
 
                 var refFile = new ReferenceFile
                 {
@@ -71,10 +75,7 @@ namespace ArchitectFlow_AI.Services
         {
             int added = 0;
             foreach (var (path, proj) in files)
-            {
-                if (TryAdd(path, proj))
-                    added++;
-            }
+                if (TryAdd(path, proj)) added++;
             return added;
         }
 
@@ -96,10 +97,12 @@ namespace ArchitectFlow_AI.Services
                 ".html", ".css", ".ps1", ".sh"
             };
 
-            var files = Directory.EnumerateFiles(folderPath, "*.*", SearchOption.AllDirectories)
+            var files = Directory
+                .EnumerateFiles(folderPath, "*.*", SearchOption.AllDirectories)
                 .Where(f =>
                 {
-                    var parts = f.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                    var parts = f.Split(
+                        Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
                     return !parts.Any(p => ignore.Contains(p));
                 })
                 .Where(f => sourceExtensions.Contains(Path.GetExtension(f)))
@@ -111,15 +114,8 @@ namespace ArchitectFlow_AI.Services
         public bool Remove(string fullPath)
         {
             bool removed;
-            lock (_lock)
-            {
-                removed = _files.Remove(fullPath);
-            }
-            if (removed)
-            {
-                UpdateObservableCollection();
-                FireFilesChanged();
-            }
+            lock (_lock) { removed = _files.Remove(fullPath); }
+            if (removed) { UpdateObservableCollection(); FireFilesChanged(); }
             return removed;
         }
 
@@ -140,8 +136,7 @@ namespace ArchitectFlow_AI.Services
 
         public bool Contains(string fullPath)
         {
-            lock (_lock)
-                return _files.ContainsKey(fullPath);
+            lock (_lock) return _files.ContainsKey(fullPath);
         }
 
         public string BuildContextPayload()
@@ -196,15 +191,17 @@ namespace ArchitectFlow_AI.Services
             return sb.ToString();
         }
 
+        // BUG FIX: was using .Run() (blocking) which risks a deadlock when called
+        // from the UI thread. Switched to .RunAsync() + fire-and-forget pattern.
+        // The observable collection must be updated on the UI thread (WPF requirement).
         private void UpdateObservableCollection()
         {
-            Microsoft.VisualStudio.Shell.ThreadHelper.JoinableTaskFactory.Run(async () =>
+            _ = ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
             {
-                await Microsoft.VisualStudio.Shell.ThreadHelper.JoinableTaskFactory
-                    .SwitchToMainThreadAsync();
-
+                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                var snapshot = GetFiles();
                 ObservableFiles.Clear();
-                foreach (var f in GetFiles())
+                foreach (var f in snapshot)
                     ObservableFiles.Add(f);
             });
         }
@@ -216,13 +213,13 @@ namespace ArchitectFlow_AI.Services
 
         private static void NotifyMaxReached(int max)
         {
-            _ = Microsoft.VisualStudio.Shell.ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
+            _ = ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
             {
-                await Microsoft.VisualStudio.Shell.ThreadHelper.JoinableTaskFactory
-                    .SwitchToMainThreadAsync();
-                Microsoft.VisualStudio.Shell.VsShellUtilities.ShowMessageBox(
+                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                VsShellUtilities.ShowMessageBox(
                     ArchitectFlowPackage.Instance,
-                    $"Limite massimo di {max} file di riferimento raggiunto.\nRimuovi alcuni file prima di aggiungerne altri.",
+                    $"Limite massimo di {max} file di riferimento raggiunto.\n" +
+                    "Rimuovi alcuni file prima di aggiungerne altri.",
                     "ArchitectFlow AI",
                     Microsoft.VisualStudio.Shell.Interop.OLEMSGICON.OLEMSGICON_WARNING,
                     Microsoft.VisualStudio.Shell.Interop.OLEMSGBUTTON.OLEMSGBUTTON_OK,
@@ -230,22 +227,26 @@ namespace ArchitectFlow_AI.Services
             });
         }
 
+        // BUG FIX: must only be called from the UI thread.
+        // Callers are responsible for the thread switch (see TryAdd above).
         private static string GetSolutionDirectory()
         {
-            Microsoft.VisualStudio.Shell.ThreadHelper.ThrowIfNotOnUIThread();
-            var dte = Microsoft.VisualStudio.Shell.Package.GetGlobalService(typeof(EnvDTE.DTE)) as EnvDTE.DTE;
+            ThreadHelper.ThrowIfNotOnUIThread();
+            var dte = Package.GetGlobalService(typeof(EnvDTE.DTE)) as EnvDTE.DTE;
             var solutionPath = dte?.Solution?.FullName;
-            return string.IsNullOrEmpty(solutionPath) ? null : Path.GetDirectoryName(solutionPath);
+            return string.IsNullOrEmpty(solutionPath)
+                ? null
+                : Path.GetDirectoryName(solutionPath);
         }
 
         private static string MakeRelative(string basePath, string fullPath)
         {
-            var baseUri = new Uri(basePath.TrimEnd(Path.DirectorySeparatorChar) +
-                                  Path.DirectorySeparatorChar);
+            var baseUri = new Uri(
+                basePath.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar);
             var fileUri = new Uri(fullPath);
             return Uri.UnescapeDataString(
                 baseUri.MakeRelativeUri(fileUri).ToString()
-                    .Replace('/', Path.DirectorySeparatorChar));
+                       .Replace('/', Path.DirectorySeparatorChar));
         }
     }
 

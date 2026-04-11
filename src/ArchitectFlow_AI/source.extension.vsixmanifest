@@ -64,15 +64,15 @@ Modalità di generazione:
                        DisplayName="Visual Studio core editor"/>
     </Prerequisites>
 
-    <Assets>
-        <Asset Type="Microsoft.VisualStudio.VsPackage"
-               d:Source="Project"
-               d:ProjectName="%CurrentProject%"
-               Path="|%CurrentProject%;PkgdefProjectOutputGroup|"/>
-        <Asset Type="Microsoft.VisualStudio.MefComponent"
-               d:Source="Project"
-               d:ProjectName="%CurrentProject%"
-               Path="|%CurrentProject%|"/>
-    </Assets>
+<Assets>
+    <Asset Type="Microsoft.VisualStudio.VsPackage" 
+           d:Source="Project" 
+           d:ProjectName="ArchitectFlow_AI" 
+           Path="|ArchitectFlow_AI;PkgdefProjectOutputGroup|"/>
+    <Asset Type="Microsoft.VisualStudio.MefComponent" 
+           d:Source="Project" 
+           d:ProjectName="ArchitectFlow_AI" 
+           Path="|ArchitectFlow_AI|"/>
+</Assets>
 
 </PackageManifest>
