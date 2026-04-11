@@ -7,7 +7,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -18,14 +17,8 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
-
 namespace ArchitectFlow_AI.ToolWindows
 {
-
-    // ══════════════════════════════════════════════════════════════════════
-    //  VIEWMODEL
-    // ══════════════════════════════════════════════════════════════════════
-
     public class ArchitectFlowViewModel : INotifyPropertyChanged
     {
         private readonly ReferenceFileManager _refMgr;
@@ -35,13 +28,10 @@ namespace ArchitectFlow_AI.ToolWindows
         private bool _isGenerating;
         private bool _refPanelCollapsed;
         private readonly StringBuilder _streamBuffer = new StringBuilder();
-
         public ArchitectFlowViewModel(ReferenceFileManager refMgr)
         {
             _refMgr = refMgr;
             ReferenceFiles = refMgr.ObservableFiles;
-
-            // Aggiorna le proprietà derivate quando cambia la lista reference
             refMgr.FilesChanged += (_, args) =>
             {
                 OnPropertyChanged(nameof(ReferenceCount));
@@ -52,13 +42,9 @@ namespace ArchitectFlow_AI.ToolWindows
                 OnPropertyChanged(nameof(RefPanelMaxHeight));
             };
         }
-
-        // ── Reference files ──────────────────────────────────────────────
         public ObservableCollection<ReferenceFile> ReferenceFiles { get; }
         public int ReferenceCount => _refMgr.Count;
         public bool HasReferences => _refMgr.Count > 0;
-
-        // ── Prompt ───────────────────────────────────────────────────────
         public string PromptText
         {
             get => _promptText;
@@ -71,22 +57,17 @@ namespace ArchitectFlow_AI.ToolWindows
             }
         }
         public bool IsPromptEmpty => string.IsNullOrWhiteSpace(_promptText);
-
-        // ── Output ───────────────────────────────────────────────────────
         public string OutputText
         {
             get => _outputText;
             set { _outputText = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasOutput)); }
         }
         public bool HasOutput => !string.IsNullOrWhiteSpace(_outputText);
-
         public string StatusText
         {
             get => _statusText;
             set { _statusText = value; OnPropertyChanged(); }
         }
-
-        // ── Stato generazione ────────────────────────────────────────────
         public bool IsGenerating
         {
             get => _isGenerating;
@@ -98,35 +79,19 @@ namespace ArchitectFlow_AI.ToolWindows
                 OnPropertyChanged(nameof(GenerateButtonLabel));
             }
         }
-
         public bool CanGenerate => !IsGenerating && !IsLoopRunning && !IsPromptEmpty;
-
         public string GenerateButtonLabel =>
             IsGenerating ? "Generazione…" : "Genera";
-
-        // ── Costruzione prompt ─────────────────────────────────────────────
-
-        /// <summary>
-        /// Costruisce il prompt completo con i #file: + contenuto inline.
-        /// Usato per il path Copilot Chat (loop agente).
-        /// </summary>
         public string BuildCopilotPrompt(string userPrompt)
         {
             var globalMgr = ArchitectFlowPackage.Instance?.ReferenceFileManager;
             return CopilotBridgeService.BuildFullPrompt(userPrompt, globalMgr);
         }
-
-        /// <summary>
-        /// Costruisce il prompt autocontenuto con il contenuto completo dei file.
-        /// Usato per il clipboard e per la verifica visiva.
-        /// </summary>
         public string BuildSelfContainedPrompt(string userPrompt)
         {
             var globalMgr = ArchitectFlowPackage.Instance?.ReferenceFileManager;
             return CopilotBridgeService.BuildFullPromptWithContent(userPrompt, globalMgr);
         }
-
-        // ── UI stato pannello ────────────────────────────────────────────
         public bool RefPanelCollapsed
         {
             get => _refPanelCollapsed;
@@ -138,14 +103,9 @@ namespace ArchitectFlow_AI.ToolWindows
                 OnPropertyChanged(nameof(RefPanelMaxHeight));
             }
         }
-
         public string CollapseIcon => _refPanelCollapsed ? "▼" : "▲";
-
         public double RefPanelMaxHeight =>
             _refPanelCollapsed ? 0 : Math.Min(220, Math.Max(80, ReferenceCount * 38 + 10));
-
-        // ── Streaming output ─────────────────────────────────────────────
-
         public void BeginGeneration()
         {
             _streamBuffer.Clear();
@@ -153,13 +113,11 @@ namespace ArchitectFlow_AI.ToolWindows
             IsGenerating = true;
             StatusText = "⏳ Generazione in corso con Claude…";
         }
-
         public void AppendChunk(string chunk)
         {
             _streamBuffer.Append(chunk);
             OutputText = _streamBuffer.ToString();
         }
-
         public void EndGeneration()
         {
             IsGenerating = false;
@@ -167,45 +125,36 @@ namespace ArchitectFlow_AI.ToolWindows
             int lines = OutputText.Split('\n').Length;
             StatusText = $"✓ Completato · {chars:N0} caratteri · {lines} righe · {DateTime.Now:HH:mm:ss}";
         }
-
-        // ── Loop agente ──────────────────────────────────────────────────
-
         private bool _loopRunning;
         private int _loopIteration;
         private int _loopMaxIterations = 10;
         private int _loopErrorCount;
         private string _loopPhase = string.Empty;
-
         public bool IsLoopRunning
         {
             get => _loopRunning;
             set { _loopRunning = value; OnPropertyChanged(); OnPropertyChanged(nameof(CanStartLoop)); OnPropertyChanged(nameof(LoopButtonLabel)); }
         }
-
         public int LoopIteration
         {
             get => _loopIteration;
             set { _loopIteration = value; OnPropertyChanged(); OnPropertyChanged(nameof(LoopProgressText)); }
         }
-
         public int LoopMaxIterations
         {
             get => _loopMaxIterations;
             set { _loopMaxIterations = value; OnPropertyChanged(); }
         }
-
         public int LoopErrorCount
         {
             get => _loopErrorCount;
             set { _loopErrorCount = value; OnPropertyChanged(); }
         }
-
         public string LoopPhase
         {
             get => _loopPhase;
             set { _loopPhase = value; OnPropertyChanged(); OnPropertyChanged(nameof(LoopPhaseIcon)); }
         }
-
         public string LoopPhaseIcon => _loopPhase switch
         {
             "inject" => "📝",
@@ -214,66 +163,43 @@ namespace ArchitectFlow_AI.ToolWindows
             "error" => "❌",
             _ => "⏳",
         };
-
         public string LoopProgressText =>
             _loopRunning
                 ? $"Iterazione {_loopIteration}/{_loopMaxIterations} · {_loopErrorCount} errori"
                 : "Pronto";
-
         public bool CanStartLoop => !IsLoopRunning && !IsPromptEmpty;
-
         public string LoopButtonLabel => IsLoopRunning ? "Stop Loop" : "▶ Avvia Loop AI";
-
         public void SetError(string message)
         {
             IsGenerating = false;
             OutputText = $"❌ ERRORE\n\n{message}";
             StatusText = $"✗ Errore · {DateTime.Now:HH:mm:ss}";
         }
-
-        // ── INotifyPropertyChanged ────────────────────────────────────────
         public event PropertyChangedEventHandler PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string name = null)
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
-
-    // ══════════════════════════════════════════════════════════════════════
-    //  CODE-BEHIND
-    // ══════════════════════════════════════════════════════════════════════
-
     public partial class ArchitectFlowToolWindowControl : UserControl
     {
         private ArchitectFlowViewModel _vm;
         private CancellationTokenSource _cts;
         private bool _apiEventsHooked;
-
         public ArchitectFlowToolWindowControl()
         {
             InitializeComponent();
             Loaded += OnLoaded;
         }
-
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
             RegisterVsThemeResources();
             EnsureInitialized();
         }
-
-        /// <summary>
-        /// Inizializzazione idempotente del ViewModel e dei callback.
-        /// Può essere chiamata più volte in sicurezza (ad es. da OnLoaded,
-        /// dal comando AddToReferences, o da GetOrCreateToolWindowAsync).
-        /// Usa il Package come unico punto di verità.
-        /// </summary>
         public void EnsureInitialized()
         {
-            if (_vm != null) return; // Già inizializzato
+            if (_vm != null) return; 
             if (ArchitectFlowPackage.Instance?.ReferenceFileManager == null) return;
-
             _vm = new ArchitectFlowViewModel(ArchitectFlowPackage.Instance.ReferenceFileManager);
             DataContext = _vm;
-
-            // Aggancia i callback di streaming dell'API service (una sola volta)
             if (!_apiEventsHooked && ArchitectFlowPackage.Instance.ClaudeApiService != null)
             {
                 var api = ArchitectFlowPackage.Instance.ClaudeApiService;
@@ -283,58 +209,38 @@ namespace ArchitectFlow_AI.ToolWindows
                 _apiEventsHooked = true;
             }
         }
-
-        /// <summary>
-        /// Popola le DynamicResource "ToolWindowBackground" e "ToolWindowForeground"
-        /// con i colori del tema VS attivo. Nessun riferimento a vsshell nel XAML
-        /// evita l'errore "assembly not found" a design-time.
-        /// </summary>
         private void RegisterVsThemeResources()
         {
             try
             {
-                // Recupera i colori dal tema VS corrente via EnvironmentColors
-                var bgColor = Microsoft.VisualStudio.PlatformUI.EnvironmentColors
-                    .ToolWindowBackgroundColorKey;
-                var fgColor = Microsoft.VisualStudio.PlatformUI.EnvironmentColors
-                    .ToolWindowTextColorKey;
-
+                var bgColor = EnvironmentColors.ToolWindowBackgroundColorKey;
+                var fgColor = EnvironmentColors.ToolWindowTextColorKey;
                 var bg = VSColorTheme.GetThemedColor(bgColor);
                 var fg = VSColorTheme.GetThemedColor(fgColor);
-
                 Resources["ToolWindowBackground"] =
                     new SolidColorBrush(Color.FromArgb(bg.A, bg.R, bg.G, bg.B));
                 Resources["ToolWindowForeground"] =
                     new SolidColorBrush(Color.FromArgb(fg.A, fg.R, fg.G, fg.B));
-
-                // Aggiorna i colori se il tema cambia
                 VSColorTheme.ThemeChanged += _ => Dispatcher.Invoke(RegisterVsThemeResources);
             }
             catch
             {
-                // Fallback neutro se VS non è disponibile (design-time)
                 Resources["ToolWindowBackground"] = new SolidColorBrush(Color.FromRgb(30, 30, 30));
                 Resources["ToolWindowForeground"] = new SolidColorBrush(Colors.WhiteSmoke);
             }
         }
-
-        // ── Streaming callbacks ──────────────────────────────────────────
-
         private void OnChunkReceived(object sender, string chunk)
         {
             Dispatcher.Invoke(() =>
             {
                 _vm.AppendChunk(chunk);
-                // Auto-scroll verso il basso
                 OutputScroll.ScrollToBottom();
             });
         }
-
         private void OnApiError(object sender, string error)
         {
             Dispatcher.Invoke(() => _vm.SetError(error));
         }
-
         private void OnGenerationCompleted(object sender, EventArgs e)
         {
             Dispatcher.Invoke(() =>
@@ -343,14 +249,10 @@ namespace ArchitectFlow_AI.ToolWindows
                 HandleOutputTarget();
             });
         }
-
-        // ── Generazione ──────────────────────────────────────────────────
-
         private async void OnGenerateClick(object sender, RoutedEventArgs e)
         {
             await StartGenerationAsync();
         }
-
         private async void OnPromptKeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Return && (Keyboard.Modifiers & ModifierKeys.Control) != 0)
@@ -359,42 +261,27 @@ namespace ArchitectFlow_AI.ToolWindows
                 await StartGenerationAsync();
             }
         }
-
         private async Task StartGenerationAsync()
         {
             if (_vm == null || !_vm.CanGenerate) return;
-
             _cts?.Cancel();
             _cts = new CancellationTokenSource();
-
-            // Se il manager è vuoto, cattura automaticamente
-            // i file selezionati nella Solution Explorer.
             AutoAddFromSolutionExplorerIfEmpty();
-
-            // Mostra all'utente quanti file di riferimento verranno inviati.
-            // I file vanno nel system prompt di Claude (via BuildContextPayload),
-            // il testo dell'utente va nel messaggio utente.
             int refCount = ArchitectFlowPackage.Instance?.ReferenceFileManager?.Count ?? 0;
             _vm.BeginGeneration();
             _vm.StatusText = refCount > 0
                 ? $"⏳ Invio a Claude: {refCount} file di riferimento + prompt…"
                 : "⏳ Invio a Claude (nessun file di riferimento)…";
-
             var mode = (ModeCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "freeform";
-
             await ArchitectFlowPackage.Instance.ClaudeApiService
                 .GenerateAsync(_vm.PromptText, mode, _cts.Token);
         }
-
         private void OnStopClick(object sender, RoutedEventArgs e)
         {
             _cts?.Cancel();
             _vm.IsGenerating = false;
             _vm.StatusText = "⏹ Generazione interrotta.";
         }
-
-        // ── Output actions ────────────────────────────────────────────────
-
         private void HandleOutputTarget()
         {
             var target = (OutputCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "panel";
@@ -409,12 +296,9 @@ namespace ArchitectFlow_AI.ToolWindows
                 case "new_file":
                 _ = SaveAsNewFileAsync();
                 break;
-                // "panel" → già mostrato, niente da fare
             }
         }
-
         private void OnCopyOutputClick(object sender, RoutedEventArgs e) => CopyToClipboard();
-
         private void CopyToClipboard()
         {
             if (!string.IsNullOrWhiteSpace(_vm.OutputText))
@@ -423,16 +307,13 @@ namespace ArchitectFlow_AI.ToolWindows
                 _vm.StatusText = "📋 Copiato negli appunti!";
             }
         }
-
         private void OnInsertToEditorClick(object sender, RoutedEventArgs e)
         {
             _ = InsertToActiveEditorAsync();
         }
-
         private async Task InsertToActiveEditorAsync()
         {
             if (string.IsNullOrWhiteSpace(_vm.OutputText)) return;
-
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
             var dte = Package.GetGlobalService(typeof(EnvDTE.DTE)) as EnvDTE.DTE;
             var doc = dte?.ActiveDocument;
@@ -446,38 +327,28 @@ namespace ArchitectFlow_AI.ToolWindows
                 _vm.StatusText = "⚠ Nessun editor di testo attivo.";
             }
         }
-
         private void OnSaveAsFileClick(object sender, RoutedEventArgs e)
         {
             _ = SaveAsNewFileAsync();
         }
-
         private async Task SaveAsNewFileAsync()
         {
             if (string.IsNullOrWhiteSpace(_vm.OutputText)) return;
-
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-
             var dlg = new Microsoft.Win32.SaveFileDialog
             {
                 Title = "Salva output ArchitectFlow",
                 Filter = "C# File (*.cs)|*.cs|SQL File (*.sql)|*.sql|Tutti i file (*.*)|*.*",
                 FileName = "Generated.cs",
             };
-
             if (dlg.ShowDialog() == true)
             {
                 File.WriteAllText(dlg.FileName, _vm.OutputText, Encoding.UTF8);
                 _vm.StatusText = $"💾 Salvato in {Path.GetFileName(dlg.FileName)}";
-
-                // Apri il file in VS
                 var dte = Package.GetGlobalService(typeof(EnvDTE.DTE)) as EnvDTE.DTE;
                 dte?.ItemOperations.OpenFile(dlg.FileName);
             }
         }
-
-        // ── Reference file actions ────────────────────────────────────────
-
         private void OnRemoveReferenceClick(object sender, RoutedEventArgs e)
         {
             if (sender is Button btn && btn.Tag is string path)
@@ -485,7 +356,6 @@ namespace ArchitectFlow_AI.ToolWindows
                 ArchitectFlowPackage.Instance.ReferenceFileManager.Remove(path);
             }
         }
-
         private void OnClearAllClick(object sender, RoutedEventArgs e)
         {
             var result = VsShellUtilities.ShowMessageBox(
@@ -495,22 +365,18 @@ namespace ArchitectFlow_AI.ToolWindows
                 OLEMSGICON.OLEMSGICON_QUERY,
                 OLEMSGBUTTON.OLEMSGBUTTON_YESNO,
                 OLEMSGDEFBUTTON.OLEMSGDEFBUTTON_SECOND);
-
-            if (result == 6) // IDYES
+            if (result == 6) 
                 ArchitectFlowPackage.Instance.ReferenceFileManager.ClearAll();
         }
-
         private async void OnBrowseFilesClick(object sender, RoutedEventArgs e)
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-
             var dlg = new Microsoft.Win32.OpenFileDialog
             {
                 Title = "Seleziona file di riferimento ArchitectFlow",
                 Multiselect = true,
                 Filter = "File sorgente|*.cs;*.vb;*.ts;*.tsx;*.js;*.jsx;*.py;*.java;*.go;*.rs;*.sql;*.xml;*.json;*.yaml;*.yml;*.md;*.razor;*.cshtml|Tutti i file (*.*)|*.*",
             };
-
             if (dlg.ShowDialog() == true)
             {
                 int added = 0;
@@ -523,9 +389,6 @@ namespace ArchitectFlow_AI.ToolWindows
                     _vm.StatusText = $"✓ {added} file aggiunti come riferimento.";
             }
         }
-
-        // ── Drag & drop dalla Solution Explorer ──────────────────────────
-
         private void OnDragOver(object sender, DragEventArgs e)
         {
             e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop)
@@ -533,11 +396,9 @@ namespace ArchitectFlow_AI.ToolWindows
                 : DragDropEffects.None;
             e.Handled = true;
         }
-
         private void OnDrop(object sender, DragEventArgs e)
         {
             if (!e.Data.GetDataPresent(DataFormats.FileDrop)) return;
-
             var paths = (string[])e.Data.GetData(DataFormats.FileDrop);
             int added = 0;
             foreach (var path in paths)
@@ -552,36 +413,22 @@ namespace ArchitectFlow_AI.ToolWindows
                     added += ArchitectFlowPackage.Instance.ReferenceFileManager.AddFolder(path);
                 }
             }
-
             if (added > 0)
                 _vm.StatusText = $"✓ {added} file aggiunti per trascinamento.";
         }
-
-        // ── UI helpers ────────────────────────────────────────────────────
-
         private void OnClearPromptClick(object sender, RoutedEventArgs e)
         {
             _vm.PromptText = string.Empty;
             PromptBox.Focus();
         }
-
         private void OnCopyPromptClick(object sender, RoutedEventArgs e)
         {
-            // Se il manager è vuoto, cattura automaticamente
-            // i file selezionati nella Solution Explorer.
             AutoAddFromSolutionExplorerIfEmpty();
-
             var manager = ArchitectFlowPackage.Instance?.ReferenceFileManager;
             int fileCount = manager?.Count ?? 0;
-
-            // Costruisce il prompt COMPLETO con il contenuto dei file inline.
-            // Questo rende il prompt autocontenuto: il contenuto dei file
-            // è visibile quando si incolla ovunque (Copilot Chat, ChatGPT, ecc.).
             string fullPrompt = CopilotBridgeService.BuildFullPromptWithContent(
                 _vm.PromptText, manager);
-
-            System.Windows.Clipboard.SetText(fullPrompt);
-
+            Clipboard.SetText(fullPrompt);
             if (fileCount > 0)
             {
                 _vm.StatusText = $"📋 Copiato: {fileCount} file + prompt ({fullPrompt.Length:N0} caratteri)";
@@ -591,20 +438,16 @@ namespace ArchitectFlow_AI.ToolWindows
                 _vm.StatusText = "📋 Copiato (nessun file di riferimento selezionato).";
             }
         }
-
         private void OnToggleRefPanelClick(object sender, RoutedEventArgs e)
         {
             _vm.RefPanelCollapsed = !_vm.RefPanelCollapsed;
         }
-
         private void OnModeChanged(object sender, SelectionChangedEventArgs e)
         {
             if (_vm == null) return;
             var mode = (ModeCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? string.Empty;
-            // Aggiorna placeholder in base alla modalità
             _vm.StatusText = $"Modalità: {mode}";
         }
-
         private void OnOpenSettingsClick(object sender, RoutedEventArgs e)
         {
             _ = ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
@@ -613,30 +456,16 @@ namespace ArchitectFlow_AI.ToolWindows
                 ArchitectFlowPackage.Instance?.ShowOptionPage(typeof(ArchitectFlowOptionsPage));
             });
         }
-
-        // ── Auto-add dalla Solution Explorer ──────────────────────────────
-
-        /// <summary>
-        /// Se il ReferenceFileManager è vuoto, aggiunge automaticamente
-        /// i file attualmente selezionati nella Solution Explorer.
-        /// Permette all'utente di selezionare file in SE e generare
-        /// il prompt senza il passaggio esplicito "Aggiungi a ArchitectFlow".
-        /// </summary>
         private void AutoAddFromSolutionExplorerIfEmpty()
         {
             var mgr = ArchitectFlowPackage.Instance?.ReferenceFileManager;
             if (mgr == null || mgr.Count > 0) return;
-
             var files = SolutionExplorerHelper.GetSelectedFiles();
             if (files.Count == 0) return;
-
             int added = mgr.AddRange(files);
             if (added > 0 && _vm != null)
                 _vm.StatusText = $"📎 Auto-aggiunti {added} file dalla Solution Explorer.";
         }
-
-        // ── Agent Loop ────────────────────────────────────────────────────
-
         private void OnStartLoopClick(object sender, RoutedEventArgs e)
         {
             if (_vm.IsLoopRunning)
@@ -645,46 +474,32 @@ namespace ArchitectFlow_AI.ToolWindows
                 _vm.IsLoopRunning = false;
                 return;
             }
-
             if (string.IsNullOrWhiteSpace(_vm.PromptText)) return;
-
-            // Se il manager è vuoto, cattura automaticamente
-            // i file selezionati nella Solution Explorer.
             AutoAddFromSolutionExplorerIfEmpty();
-
             var loop = ArchitectFlowPackage.Instance?.AgentLoop;
             if (loop == null)
             {
                 _vm.StatusText = "❌ AgentLoopService non disponibile.";
                 return;
             }
-
             _vm.IsLoopRunning = true;
             _vm.LoopIteration = 0;
             _vm.LoopErrorCount = 0;
             _vm.LoopPhase = "inject";
             _vm.OutputText = string.Empty;
-
-            // Leggi le opzioni dalle impostazioni dell'estensione
             var settings = ArchitectFlowPackage.Instance
                 ?.GetDialogPage(typeof(ArchitectFlowOptionsPage)) as ArchitectFlowOptionsPage;
-
             var options = new AgentLoopOptions
             {
                 MaxIterations = settings?.MaxLoopIterations ?? _vm.LoopMaxIterations,
                 DelayAfterGenerationSeconds = settings?.DelayAfterGenerationSeconds ?? 2,
                 TreatWarningsAsErrors = settings?.TreatWarningsAsErrors ?? false,
             };
-
-            // Sincronizza il valore dal pannello UI (può essere stato modificato dall'utente)
             options.MaxIterations = _vm.LoopMaxIterations;
-
-            // Aggancia gli eventi del loop
             loop.IterationChanged -= OnLoopIterationChanged;
             loop.LogMessage -= OnLoopLogMessage;
             loop.IterationChanged += OnLoopIterationChanged;
             loop.LogMessage += OnLoopLogMessage;
-
             _ = loop.StartAsync(_vm.PromptText, options)
                 .ContinueWith(_ => Dispatcher.Invoke(() =>
                 {
@@ -694,7 +509,6 @@ namespace ArchitectFlow_AI.ToolWindows
                         : "⏹ Loop terminato.";
                 }));
         }
-
         private void OnLoopIterationChanged(object sender, LoopIterationState state)
         {
             Dispatcher.Invoke(() =>
@@ -706,7 +520,6 @@ namespace ArchitectFlow_AI.ToolWindows
                 _vm.IsLoopRunning = state.Phase != "done" && state.Phase != "error";
             });
         }
-
         private void OnLoopLogMessage(object sender, string message)
         {
             Dispatcher.Invoke(() =>
