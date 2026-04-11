@@ -1,3 +1,6 @@
+using System;
+using System.IO;
+
 namespace ArchitectFlow_AI.Models
 {
     public class ReferenceFile

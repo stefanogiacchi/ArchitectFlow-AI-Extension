@@ -9,7 +9,9 @@
       VSIX build settings richiesti da Microsoft.VSSDK.BuildTools.
       NON modificare l'ordine — alcuni target dipendono da queste proprietà.
     -->
+    <VSToolsPath Condition="'$(VSToolsPath)' == ''">$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)</VSToolsPath>
     <VsSDKVersion>17.0</VsSDKVersion>
+    <CreateVsixContainer>true</CreateVsixContainer>
     <GeneratePkgDefFile>true</GeneratePkgDefFile>
     <IncludeAssemblyInVSIXContainer>true</IncludeAssemblyInVSIXContainer>
     <IncludeDebugSymbolsInVSIXContainer>false</IncludeDebugSymbolsInVSIXContainer>
@@ -149,5 +151,15 @@
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Net.Http" />
   </ItemGroup>
+  <ItemGroup>
+    <None Update="App.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </None>
+  </ItemGroup>
+
+
+  <!-- Import VSSDK targets from VS installation (defines CreateVsixContainer, DeployVsixExtensionFiles, etc.) -->
+  <Import Project="$(VSToolsPath)\VSSDK\Microsoft.VsSDK.targets"
+          Condition="Exists('$(VSToolsPath)\VSSDK\Microsoft.VsSDK.targets')" />
 
 </Project>

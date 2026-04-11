@@ -69,20 +69,15 @@ namespace ArchitectFlow_AI.ToolWindows
             => Binding.DoNothing;
     }
 
-    public class ProgressWidthConverter : IMultiValueConverter
+    public class ProgressWidthConverter : IValueConverter
     {
-        public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            if (values == null || values.Length < 3) return 0.0;
+            if (value == null) return 0.0;
 
-            if (values[0] == DependencyProperty.UnsetValue ||
-                values[1] == DependencyProperty.UnsetValue ||
-                values[2] == DependencyProperty.UnsetValue)
-                return 0.0;
-
-            double iteration = System.Convert.ToDouble(values[0] ?? 0);
-            double maxIter = System.Convert.ToDouble(values[1] ?? 1);
-            double container = System.Convert.ToDouble(values[2] ?? 0);
+            double iteration = System.Convert.ToDouble(value ?? 0);
+            double maxIter = System.Convert.ToDouble(parameter ?? 1);
+            double container = System.Convert.ToDouble(value ?? 0);
 
             if (maxIter <= 0) return 0.0;
             if (double.IsNaN(container) || container < 0) return 0.0;
@@ -92,7 +87,7 @@ namespace ArchitectFlow_AI.ToolWindows
             return container * ratio;
         }
 
-        public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
-            => throw new NotImplementedException();
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+            => Binding.DoNothing;
     }
 }

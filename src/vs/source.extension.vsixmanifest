@@ -34,11 +34,7 @@ Modalità di generazione:
 
         <MoreInfo>https://github.com/stefanogiacchi/ArchitectFlow-AI-Extension</MoreInfo>
 
-        <License>LICENSE.txt</License>
-
         <Icon>Resources\logo.png</Icon>
-
-        <PreviewImage>Resources\preview.png</PreviewImage>
 
         <Tags>CQRS, Dapper, Mediator, AI, scaffolding, code generation, Claude, Anthropic</Tags>
 
@@ -60,8 +56,8 @@ Modalità di generazione:
 
     <Prerequisites>
         <Prerequisite Id="Microsoft.VisualStudio.Component.CoreEditor"
-                      Version="[17.0,18.0)"
-                      DisplayName="Visual Studio core editor"/>
+                       Version="[17.0,19.0)"
+                       DisplayName="Visual Studio core editor"/>
     </Prerequisites>
 
     <Assets>
