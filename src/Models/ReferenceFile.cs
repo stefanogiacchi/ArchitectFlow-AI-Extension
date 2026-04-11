@@ -57,28 +57,28 @@ namespace ArchitectFlow_AI.Models
 
         private static string DetectLanguage(string ext) => ext switch
         {
-            "cs"          => "csharp",
-            "vb"          => "vbnet",
+            "cs" => "csharp",
+            "vb" => "vbnet",
             "ts" or "tsx" => "typescript",
             "js" or "jsx" => "javascript",
-            "py"          => "python",
-            "java"        => "java",
-            "go"          => "go",
-            "rs"          => "rust",
+            "py" => "python",
+            "java" => "java",
+            "go" => "go",
+            "rs" => "rust",
             "cpp" or "cc" or "cxx" => "cpp",
-            "c" or "h"    => "c",
-            "sql"         => "sql",
-            "xml"         => "xml",
-            "json"        => "json",
+            "c" or "h" => "c",
+            "sql" => "sql",
+            "xml" => "xml",
+            "json" => "json",
             "yaml" or "yml" => "yaml",
-            "md"          => "markdown",
-            "xaml"        => "xml",
+            "md" => "markdown",
+            "xaml" => "xml",
             "razor" or "cshtml" => "razor",
-            "html"        => "html",
-            "css"         => "css",
-            "ps1"         => "powershell",
-            "sh"          => "bash",
-            _             => "plaintext"
+            "html" => "html",
+            "css" => "css",
+            "ps1" => "powershell",
+            "sh" => "bash",
+            _ => "plaintext"
         };
 
         private static string FormatSize(long bytes)

@@ -42,6 +42,18 @@ namespace ArchitectFlow_AI
         /// <summary>Servizio per le chiamate all'API Claude.</summary>
         public ClaudeApiService ClaudeApiService { get; private set; }
 
+        /// <summary>Bridge verso GitHub Copilot Enterprise — inietta prompt e attende generazione.</summary>
+        public CopilotBridgeService CopilotBridge { get; private set; }
+
+        /// <summary>Monitora la build VS e raccoglie gli errori di compilazione.</summary>
+        public BuildOrchestratorService BuildOrchestrator { get; private set; }
+
+        /// <summary>Logger verso il riquadro Output di VS.</summary>
+        public OutputWindowLogger OutputLogger { get; private set; }
+
+        /// <summary>Orchestratore del loop agente: Copilot → Build → Errori → Copilot…</summary>
+        public AgentLoopService AgentLoop { get; private set; }
+
         protected override async Task InitializeAsync(
             CancellationToken cancellationToken,
             IProgress<ServiceProgressData> progress)
@@ -54,6 +66,18 @@ namespace ArchitectFlow_AI
             Instance = this;
             ReferenceFileManager = new ReferenceFileManager();
             ClaudeApiService = new ClaudeApiService(this);
+            CopilotBridge = new CopilotBridgeService(this);
+            BuildOrchestrator = new BuildOrchestratorService(this);
+            await BuildOrchestrator.InitializeAsync();
+
+            OutputLogger = new OutputWindowLogger(this);
+            await OutputLogger.InitializeAsync();
+
+            AgentLoop = new AgentLoopService(
+                CopilotBridge, BuildOrchestrator, ReferenceFileManager, this);
+
+            // Specchia il log del loop anche nella Output Window di VS
+            AgentLoop.LogMessage += (_, msg) => OutputLogger.Log(msg);
 
             // Registra tutti i comandi
             await AddToReferencesCommand.InitializeAsync(this);
@@ -71,11 +95,22 @@ namespace ArchitectFlow_AI
 
         /// <summary>
         /// Ottiene o crea il Tool Window principale.
+        /// Garantisce che il controllo WPF sia inizializzato con il
+        /// ReferenceFileManager del Package (unico punto di verità).
         /// </summary>
         public async Task<ArchitectFlowToolWindow> GetOrCreateToolWindowAsync()
         {
             await JoinableTaskFactory.SwitchToMainThreadAsync();
-            return (ArchitectFlowToolWindow)FindToolWindow(typeof(ArchitectFlowToolWindow), 0, true);
+            var window = (ArchitectFlowToolWindow)FindToolWindow(typeof(ArchitectFlowToolWindow), 0, true);
+
+            // Forza l'inizializzazione del controllo WPF se non ancora avvenuta
+            // (es. finestra creata da VS prima che il Package fosse pronto).
+            if (window?.Content is ArchitectFlowToolWindowControl control)
+            {
+                control.EnsureInitialized();
+            }
+
+            return window;
         }
 
         /// <summary>
@@ -125,8 +160,25 @@ namespace ArchitectFlow_AI
         [System.ComponentModel.Description("Modello Claude da usare per la generazione.")]
         public string Model { get; set; } = "claude-sonnet-4-20250514";
 
-        [System.ComponentModel.Category("Reference Files")]
-        [System.ComponentModel.DisplayName("Includi contenuto file")]
+        [System.ComponentModel.Category("Copilot Loop")]
+        [System.ComponentModel.DisplayName("Max Iterazioni Loop")]
+        [System.ComponentModel.Description("Numero massimo di iterazioni del loop agente prima di fermarsi.")]
+        public int MaxLoopIterations { get; set; } = 10;
+
+        [System.ComponentModel.Category("Copilot Loop")]
+        [System.ComponentModel.DisplayName("Delay dopo generazione (sec)")]
+        [System.ComponentModel.Description("Secondi di attesa dopo che Copilot finisce di generare, prima di avviare la build.")]
+        public int DelayAfterGenerationSeconds { get; set; } = 2;
+
+        [System.ComponentModel.Category("Copilot Loop")]
+        [System.ComponentModel.DisplayName("Timeout stabilità Copilot (ms)")]
+        [System.ComponentModel.Description("Millisecondi di inattività del documento per considerare la generazione Copilot completata.")]
+        public int CopilotStabilityTimeoutMs { get; set; } = 2000;
+
+        [System.ComponentModel.Category("Copilot Loop")]
+        [System.ComponentModel.DisplayName("Tratta warning come errori")]
+        [System.ComponentModel.Description("Se true, anche i warning di compilazione vengono corretti dal loop.")]
+        public bool TreatWarningsAsErrors { get; set; } = false;
         [System.ComponentModel.Description("Se true, il contenuto completo dei file viene inviato come contesto all'AI.")]
         public bool IncludeFileContent { get; set; } = true;
 

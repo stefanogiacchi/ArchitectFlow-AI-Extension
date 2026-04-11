@@ -3,45 +3,48 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:vsshell="clr-namespace:Microsoft.VisualStudio.Shell;assembly=Microsoft.VisualStudio.Shell.15.0"
              xmlns:local="clr-namespace:ArchitectFlow_AI.ToolWindows"
-             xmlns:models="clr-namespace:ArchitectFlow_AI.Models"
+             xmlns:models="clr-namespace:ArchitectFlow_AI.Models" d:DataContext="{d:DesignInstance Type=local:ArchitectFlowViewModel}"
              mc:Ignorable="d"
              d:DesignHeight="800" d:DesignWidth="420"
-             Background="{DynamicResource {x:Static vsshell:VsBrushes.ToolWindowBackgroundKey}}"
-             Foreground="{DynamicResource {x:Static vsshell:VsBrushes.ToolWindowTextKey}}"
+             Background="{DynamicResource ToolWindowBackground}"
+             Foreground="{DynamicResource ToolWindowForeground}"
              AllowDrop="True"
              Drop="OnDrop"
              DragOver="OnDragOver">
-
+     
     <UserControl.Resources>
 
-        <!-- ── Colori VS ───────────────────────────────────────────────── -->
-        <SolidColorBrush x:Key="AccentBrush"        Color="#6366F1"/>
-        <SolidColorBrush x:Key="AccentDimBrush"     Color="#3730A3"/>
-        <SolidColorBrush x:Key="DangerBrush"        Color="#EF4444"/>
-        <SolidColorBrush x:Key="SuccessBrush"       Color="#22C55E"/>
-        <SolidColorBrush x:Key="WarnBrush"          Color="#F59E0B"/>
-        <SolidColorBrush x:Key="SurfaceBrush"       Color="#1E1E2A"/>
-        <SolidColorBrush x:Key="BorderBrush2"       Color="#2D2D3D"/>
-        <SolidColorBrush x:Key="MutedBrush"         Color="#6B7280"/>
+        <!-- Converters — definiti in Converters.cs, stesso namespace local -->
+        <local:LanguageToIconConverter           x:Key="LangToIconConverter"/>
+        <local:CountToVisibilityConverter        x:Key="CountToVisConverter"/>
+        <local:InverseCountToVisibilityConverter x:Key="InvCountToVisConverter"/>
+        <local:BoolToVisibilityConverter         x:Key="BoolToVisConverter"/>
+        <local:ProgressWidthConverter            x:Key="ProgressWidthConverter"/>
 
-        <!-- ── Pulsante primario ───────────────────────────────────────── -->
+        <!-- Palette neutra (funziona a design-time e con i temi VS dark/light) -->
+        <SolidColorBrush x:Key="AccentBrush"    Color="#6366F1"/>
+        <SolidColorBrush x:Key="AccentDimBrush" Color="#4338CA"/>
+        <SolidColorBrush x:Key="DangerBrush"    Color="#EF4444"/>
+        <SolidColorBrush x:Key="MutedBrush"     Color="#6B7280"/>
+        <SolidColorBrush x:Key="SurfaceOverlay" Color="#14FFFFFF"/>
+        <SolidColorBrush x:Key="BorderColor"    Color="#2D2D3D"/>
+
+        <!-- Pulsante primario -->
         <Style x:Key="PrimaryButton" TargetType="Button">
-            <Setter Property="Background"   Value="{StaticResource AccentBrush}"/>
-            <Setter Property="Foreground"   Value="White"/>
+            <Setter Property="Background"      Value="{StaticResource AccentBrush}"/>
+            <Setter Property="Foreground"      Value="White"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding"      Value="12,6"/>
-            <Setter Property="FontSize"     Value="12"/>
-            <Setter Property="FontWeight"   Value="SemiBold"/>
-            <Setter Property="Cursor"       Value="Hand"/>
+            <Setter Property="Padding"         Value="12,6"/>
+            <Setter Property="FontSize"        Value="12"/>
+            <Setter Property="FontWeight"      Value="SemiBold"/>
+            <Setter Property="Cursor"          Value="Hand"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Border Background="{TemplateBinding Background}"
                                 CornerRadius="4" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center"
-                                              VerticalAlignment="Center"/>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
@@ -56,11 +59,11 @@
             </Setter>
         </Style>
 
-        <!-- ── Pulsante outline ────────────────────────────────────────── -->
+        <!-- Pulsante outline -->
         <Style x:Key="OutlineButton" TargetType="Button">
             <Setter Property="Background"      Value="Transparent"/>
-            <Setter Property="Foreground"      Value="{DynamicResource {x:Static vsshell:VsBrushes.ToolWindowTextKey}}"/>
-            <Setter Property="BorderBrush"     Value="{StaticResource BorderBrush2}"/>
+            <Setter Property="Foreground"      Value="{DynamicResource ToolWindowForeground}"/>
+            <Setter Property="BorderBrush"     Value="{StaticResource BorderColor}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding"         Value="8,4"/>
             <Setter Property="FontSize"        Value="11"/>
@@ -72,12 +75,11 @@
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
                                 CornerRadius="3" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center"
-                                              VerticalAlignment="Center"/>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#1AFFFFFF"/>
+                                <Setter Property="Background" Value="{StaticResource SurfaceOverlay}"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Opacity" Value="0.4"/>
@@ -88,10 +90,15 @@
             </Setter>
         </Style>
 
-        <!-- ── Pulsante danger (rimuovi) ──────────────────────────────── -->
-        <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource OutlineButton}">
-            <Setter Property="BorderBrush" Value="{StaticResource DangerBrush}"/>
-            <Setter Property="Foreground"  Value="{StaticResource DangerBrush}"/>
+        <!-- Pulsante danger -->
+        <Style x:Key="DangerButton" TargetType="Button">
+            <Setter Property="Background"      Value="Transparent"/>
+            <Setter Property="Foreground"      Value="{StaticResource DangerBrush}"/>
+            <Setter Property="BorderBrush"     Value="{StaticResource DangerBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding"         Value="6,3"/>
+            <Setter Property="FontSize"        Value="11"/>
+            <Setter Property="Cursor"          Value="Hand"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
@@ -99,8 +106,7 @@
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
                                 CornerRadius="3" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center"
-                                              VerticalAlignment="Center"/>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
@@ -112,110 +118,21 @@
             </Setter>
         </Style>
 
-        <!-- ── Item di un file di riferimento ────────────────────────── -->
-        <DataTemplate x:Key="ReferenceFileTemplate" DataType="{x:Type models:ReferenceFile}">
-            <Border Margin="0,1" Padding="10,7"
-                    Background="Transparent"
-                    BorderThickness="0,0,0,1"
-                    BorderBrush="{StaticResource BorderBrush2}">
-                <Border.Style>
-                    <Style TargetType="Border">
-                        <Style.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#0AFFFFFF"/>
-                            </Trigger>
-                        </Style.Triggers>
-                    </Style>
-                </Border.Style>
-
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="22"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-
-                    <!-- Icona linguaggio -->
-                    <TextBlock Grid.Column="0"
-                               Text="{Binding Language, Converter={StaticResource LangToIconConverter}}"
-                               FontSize="13" VerticalAlignment="Center"/>
-
-                    <!-- Informazioni file -->
-                    <StackPanel Grid.Column="1" Margin="6,0,6,0" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding FileName}"
-                                   FontSize="12" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource {x:Static vsshell:VsBrushes.ToolWindowTextKey}}"
-                                   TextTrimming="CharacterEllipsis"/>
-                        <TextBlock FontSize="10" Foreground="{StaticResource MutedBrush}"
-                                   TextTrimming="CharacterEllipsis">
-                            <TextBlock.Text>
-                                <MultiBinding StringFormat="{}{0}  ·  {1}">
-                                    <Binding Path="RelativePath"/>
-                                    <Binding Path="SizeDisplay"/>
-                                </MultiBinding>
-                            </TextBlock.Text>
-                        </TextBlock>
-                    </StackPanel>
-
-                    <!-- Badge linguaggio -->
-                    <Border Grid.Column="2" Margin="0,0,6,0"
-                            Background="{StaticResource AccentDimBrush}"
-                            CornerRadius="3" Padding="4,2">
-                        <TextBlock Text="{Binding Language}" FontSize="9"
-                                   Foreground="#A5B4FC"/>
-                    </Border>
-
-                    <!-- Pulsante Rimuovi -->
-                    <Button Grid.Column="3"
-                            Style="{StaticResource DangerButton}"
-                            Content="✕" Padding="4,2" FontSize="10"
-                            ToolTip="Rimuovi dalla lista dei riferimenti"
-                            Tag="{Binding FullPath}"
-                            Click="OnRemoveReferenceClick"
-                            Visibility="Hidden">
-                        <Button.Style>
-                            <Style TargetType="Button" BasedOn="{StaticResource DangerButton}">
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsMouseOver,
-                                        RelativeSource={RelativeSource AncestorType=Border}}"
-                                                 Value="True">
-                                        <Setter Property="Visibility" Value="Visible"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Button.Style>
-                    </Button>
-                </Grid>
-            </Border>
-        </DataTemplate>
-
-        <!-- ── Converters ─────────────────────────────────────────────── -->
-        <local:LanguageToIconConverter x:Key="LangToIconConverter"/>
-        <local:CountToVisibilityConverter x:Key="CountToVisConverter"/>
-        <local:InverseCountToVisibilityConverter x:Key="InvCountToVisConverter"/>
-        <local:BoolToVisibilityConverter x:Key="BoolToVisConverter"/>
-
-        <!-- ── ComboBox style ─────────────────────────────────────────── -->
+        <!-- ComboBox -->
         <Style x:Key="VsComboBox" TargetType="ComboBox">
-            <Setter Property="Background"
-                    Value="{DynamicResource {x:Static vsshell:VsBrushes.ComboBoxBackgroundKey}}"/>
-            <Setter Property="Foreground"
-                    Value="{DynamicResource {x:Static vsshell:VsBrushes.ComboBoxTextKey}}"/>
-            <Setter Property="BorderBrush"
-                    Value="{DynamicResource {x:Static vsshell:VsBrushes.ComboBoxBorderKey}}"/>
-            <Setter Property="FontSize"      Value="11"/>
-            <Setter Property="Padding"       Value="6,3"/>
-            <Setter Property="Height"        Value="24"/>
+            <Setter Property="Background"  Value="{DynamicResource ToolWindowBackground}"/>
+            <Setter Property="Foreground"  Value="{DynamicResource ToolWindowForeground}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderColor}"/>
+            <Setter Property="FontSize"    Value="11"/>
+            <Setter Property="Padding"     Value="6,3"/>
+            <Setter Property="Height"      Value="24"/>
         </Style>
 
-        <!-- ── TextBox style ──────────────────────────────────────────── -->
-        <Style x:Key="PromptBox" TargetType="TextBox">
-            <Setter Property="Background"
-                    Value="{DynamicResource {x:Static vsshell:VsBrushes.ToolWindowBackgroundKey}}"/>
-            <Setter Property="Foreground"
-                    Value="{DynamicResource {x:Static vsshell:VsBrushes.ToolWindowTextKey}}"/>
-            <Setter Property="BorderBrush"     Value="{StaticResource BorderBrush2}"/>
+        <!-- TextBox prompt -->
+        <Style x:Key="PromptBoxStyle" TargetType="TextBox">
+            <Setter Property="Background"      Value="{DynamicResource ToolWindowBackground}"/>
+            <Setter Property="Foreground"      Value="{DynamicResource ToolWindowForeground}"/>
+            <Setter Property="BorderBrush"     Value="{StaticResource BorderColor}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="FontSize"        Value="12"/>
             <Setter Property="FontFamily"      Value="Consolas"/>
@@ -230,74 +147,155 @@
             </Style.Triggers>
         </Style>
 
+        <!--
+            DataTemplate per ogni ReferenceFile.
+            Il Button "✕" usa SOLO <Button.Style> — nessun attributo Style
+            esterno per evitare "property has already been set".
+        -->
+        <DataTemplate x:Key="ReferenceFileTemplate" DataType="{x:Type models:ReferenceFile}">
+            <Border Margin="0,1" Padding="10,7"
+                    BorderThickness="0,0,0,1"
+                    BorderBrush="{StaticResource BorderColor}">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Background" Value="Transparent"/>
+                        <Style.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="{StaticResource SurfaceOverlay}"/>
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="22"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Icona linguaggio -->
+                    <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="13"
+                               Text="{Binding Language, Converter={StaticResource LangToIconConverter}}"/>
+
+                    <!-- Nome + path -->
+                    <StackPanel Grid.Column="1" Margin="6,0,6,0" VerticalAlignment="Center">
+                        <TextBlock FontSize="12" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource ToolWindowForeground}"
+                                   TextTrimming="CharacterEllipsis"
+                                   Text="{Binding FileName}"/>
+                        <TextBlock FontSize="10" Foreground="{StaticResource MutedBrush}"
+                                   TextTrimming="CharacterEllipsis">
+                            <TextBlock.Text>
+                                <MultiBinding StringFormat="{}{0}  ·  {1}">
+                                    <Binding Path="RelativePath"/>
+                                    <Binding Path="SizeDisplay"/>
+                                </MultiBinding>
+                            </TextBlock.Text>
+                        </TextBlock>
+                    </StackPanel>
+
+                    <!-- Badge linguaggio -->
+                    <Border Grid.Column="2" Margin="0,0,6,0"
+                            Background="{StaticResource AccentDimBrush}"
+                            CornerRadius="3" Padding="4,2" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Language}" FontSize="9" Foreground="#A5B4FC"/>
+                    </Border>
+
+                    <!--
+                        Pulsante rimuovi.
+                        REGOLA: nessun attributo Style="..." — usa solo <Button.Style>.
+                        La visibilità è gestita tramite DataTrigger su IsMouseOver del Border padre.
+                    -->
+                    <Button Grid.Column="3" Content="✕"
+                            ToolTip="Rimuovi riferimento"
+                            Tag="{Binding FullPath}"
+                            Click="OnRemoveReferenceClick"
+                            VerticalAlignment="Center">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource DangerButton}">
+                                <Setter Property="Visibility" Value="Hidden"/>
+                                <Style.Triggers>
+                                    <DataTrigger Value="True"
+                                                 Binding="{Binding IsMouseOver,
+                                                           RelativeSource={RelativeSource AncestorType=Border,
+                                                                           AncestorLevel=1}}">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                </Grid>
+            </Border>
+        </DataTemplate>
+
     </UserControl.Resources>
 
-    <!-- ══════════════════════════════════════════════════════════════════ -->
-    <!--  LAYOUT PRINCIPALE                                                 -->
-    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <!-- ════════════════════════════════ LAYOUT ════════════════════════════════ -->
     <Grid>
         <Grid.RowDefinitions>
-            <!-- Header -->
             <RowDefinition Height="Auto"/>
-            <!-- Binding indicator -->
+            <!-- 0  Header -->
             <RowDefinition Height="Auto"/>
-            <!-- Pannello reference (collassabile) -->
-            <RowDefinition Height="Auto" MinHeight="28"/>
-            <!-- Separatore drag -->
+            <!-- 1  Binding indicator -->
+            <RowDefinition Height="Auto"/>
+            <!-- 2  Reference header -->
+            <RowDefinition Height="Auto"/>
+            <!-- 3  Reference list -->
+            <RowDefinition Height="Auto"/>
+            <!-- 4  #file: preview -->
             <RowDefinition Height="5"/>
-            <!-- Controlli generazione -->
+            <!-- 5  Drag handle -->
             <RowDefinition Height="Auto"/>
-            <!-- Prompt -->
+            <!-- 6  Mode / Output selectors -->
             <RowDefinition Height="110"/>
-            <!-- Azioni prompt -->
+            <!-- 7  Prompt -->
             <RowDefinition Height="Auto"/>
-            <!-- Separatore -->
+            <!-- 8  Prompt actions -->
+            <RowDefinition Height="Auto"/>
+            <!-- 9  Agent Loop panel -->
             <RowDefinition Height="1"/>
-            <!-- Output (espandibile) -->
+            <!-- 10 Separator -->
             <RowDefinition Height="*"/>
+            <!-- 11 Output -->
         </Grid.RowDefinitions>
 
-        <!-- ── HEADER ──────────────────────────────────────────────────── -->
+        <!-- 0 · HEADER -->
         <Border Grid.Row="0" Padding="12,10"
-                BorderThickness="0,0,0,1"
-                BorderBrush="{StaticResource BorderBrush2}">
+                BorderThickness="0,0,0,1" BorderBrush="{StaticResource BorderColor}">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock Text="⚡" FontSize="16" Margin="0,0,8,0"/>
                     <StackPanel>
-                        <TextBlock Text="ArchitectFlow AI"
-                                   FontSize="13" FontWeight="Bold"
-                                   Foreground="{DynamicResource {x:Static vsshell:VsBrushes.ToolWindowTextKey}}"/>
+                        <TextBlock Text="ArchitectFlow AI" FontSize="13" FontWeight="Bold"
+                                   Foreground="{DynamicResource ToolWindowForeground}"/>
                         <TextBlock Text="CQRS · Dapper · Mediator"
                                    FontSize="9" Foreground="{StaticResource MutedBrush}"/>
                     </StackPanel>
                 </StackPanel>
-
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                     <Button Style="{StaticResource OutlineButton}"
-                            Content="⚙" ToolTip="Opzioni estensione"
-                            Padding="6,3" Margin="0,0,4,0"
+                            Content="⚙" Padding="6,3" Margin="0,0,4,0"
                             Click="OnOpenSettingsClick"/>
                     <Button Style="{StaticResource DangerButton}"
-                            Content="🗑 Svuota" FontSize="10" Padding="6,3"
-                            ToolTip="Rimuovi tutti i file di riferimento"
+                            Content="🗑 Svuota"
                             IsEnabled="{Binding HasReferences}"
                             Click="OnClearAllClick"/>
                 </StackPanel>
             </Grid>
         </Border>
 
-        <!-- ── BINDING INDICATOR (visibile solo con reference) ─────────── -->
+        <!-- 1 · BINDING INDICATOR -->
         <Border Grid.Row="1" Padding="12,6"
                 Background="#1A6366F1"
                 BorderThickness="0,0,0,1" BorderBrush="#336366F1"
-                Visibility="{Binding ReferenceCount,
-                             Converter={StaticResource CountToVisConverter}}">
+                Visibility="{Binding ReferenceCount, Converter={StaticResource CountToVisConverter}}">
             <StackPanel Orientation="Horizontal">
                 <Ellipse Width="7" Height="7" Fill="{StaticResource AccentBrush}"
                          VerticalAlignment="Center" Margin="0,0,8,0">
@@ -308,8 +306,7 @@
                                     <BeginStoryboard>
                                         <Storyboard RepeatBehavior="Forever">
                                             <DoubleAnimation Storyboard.TargetProperty="Opacity"
-                                                             From="1" To="0.3" Duration="0:0:1"
-                                                             AutoReverse="True"/>
+                                                             From="1" To="0.3" Duration="0:0:1" AutoReverse="True"/>
                                         </Storyboard>
                                     </BeginStoryboard>
                                 </EventTrigger>
@@ -319,115 +316,112 @@
                 </Ellipse>
                 <TextBlock FontSize="11" Foreground="#A5B4FC">
                     <Run Text="{Binding ReferenceCount, Mode=OneWay}"/>
-                    <Run Text=" file vincolanti — il codice generato seguirà questi pattern"/>
+                    <Run Text=" file vincolanti — il codice seguirà questi pattern"/>
                 </TextBlock>
             </StackPanel>
         </Border>
 
-        <!-- ── PANNELLO REFERENCE FILES ────────────────────────────────── -->
-        <Grid Grid.Row="2">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="{Binding RefPanelHeight}"/>
-            </Grid.RowDefinitions>
-
-            <!-- Intestazione sezione -->
-            <Border Grid.Row="0" Padding="12,5" Background="#0AFFFFFF"
-                    BorderThickness="0,0,0,1" BorderBrush="{StaticResource BorderBrush2}">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-
-                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="📎" Margin="0,0,6,0"/>
-                        <TextBlock Text="FILE DI RIFERIMENTO" FontSize="10"
-                                   FontWeight="Bold" Opacity="0.65" VerticalAlignment="Center"
-                                   Foreground="{DynamicResource {x:Static vsshell:VsBrushes.ToolWindowTextKey}}"/>
-                    </StackPanel>
-
-                    <!-- Badge contatore -->
-                    <Border Grid.Column="1" Margin="0,0,8,0"
-                            Background="{StaticResource AccentBrush}"
-                            CornerRadius="10" Padding="6,1">
-                        <TextBlock Text="{Binding ReferenceCount}"
-                                   FontSize="10" FontWeight="Bold" Foreground="White"/>
-                    </Border>
-
-                    <!-- Toggle collapse -->
-                    <Button Grid.Column="2" Style="{StaticResource OutlineButton}"
-                            Content="{Binding CollapseIcon}" Padding="4,2" FontSize="10"
-                            ToolTip="Espandi/comprimi pannello"
-                            Click="OnToggleRefPanelClick"/>
-                </Grid>
-            </Border>
-
-            <!-- Lista file (max height = 220, scrollabile) -->
-            <Border Grid.Row="1" x:Name="RefPanelBorder">
-                <Grid>
-                    <!-- Stato vuoto -->
-                    <Border Padding="20"
-                            Visibility="{Binding ReferenceCount,
-                                         Converter={StaticResource InvCountToVisConverter}}">
-                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                            <TextBlock Text="📂" FontSize="32" TextAlignment="Center"
-                                       HorizontalAlignment="Center" Opacity="0.3"/>
-                            <TextBlock Margin="0,10,0,0" TextAlignment="Center"
-                                       FontSize="11" Opacity="0.45" TextWrapping="Wrap"
-                                       Foreground="{DynamicResource {x:Static vsshell:VsBrushes.ToolWindowTextKey}}">
-                                Click destro su file/cartelle nella Solution Explorer<LineBreak/>
-                                → <Bold>Aggiungi a ArchitectFlow References</Bold><LineBreak/><LineBreak/>
-                                oppure trascina qui i file.
-                            </TextBlock>
-                            <Button Style="{StaticResource OutlineButton}"
-                                    Content="+ Sfoglia file…" Margin="0,12,0,0"
-                                    HorizontalAlignment="Center"
-                                    Click="OnBrowseFilesClick"/>
-                        </StackPanel>
-                    </Border>
-
-                    <!-- Lista con reference -->
-                    <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                  Visibility="{Binding ReferenceCount,
-                                               Converter={StaticResource CountToVisConverter}}">
-                        <ItemsControl ItemsSource="{Binding ReferenceFiles}"
-                                      ItemTemplate="{StaticResource ReferenceFileTemplate}"
-                                      VirtualizingPanel.IsVirtualizing="True"
-                                      VirtualizingPanel.VirtualizationMode="Recycling">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <VirtualizingStackPanel/>
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                        </ItemsControl>
-                    </ScrollViewer>
-                </Grid>
-            </Border>
-        </Grid>
-
-        <!-- ── DRAG HANDLE ─────────────────────────────────────────────── -->
-        <Border Grid.Row="3" Background="{StaticResource BorderBrush2}"
-                Cursor="SizeNS" ToolTip="Trascina per ridimensionare">
-            <Border Background="Transparent" Height="5"/>
+        <!-- 2 · REFERENCE PANEL HEADER -->
+        <Border Grid.Row="2" Padding="12,5"
+                Background="{StaticResource SurfaceOverlay}"
+                BorderThickness="0,0,0,1" BorderBrush="{StaticResource BorderColor}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="📎" Margin="0,0,6,0"/>
+                    <TextBlock Text="FILE DI RIFERIMENTO" FontSize="10" FontWeight="Bold"
+                               Opacity="0.65" VerticalAlignment="Center"
+                               Foreground="{DynamicResource ToolWindowForeground}"/>
+                </StackPanel>
+                <Border Grid.Column="1" Margin="0,0,8,0"
+                        Background="{StaticResource AccentBrush}"
+                        CornerRadius="10" Padding="6,1" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding ReferenceCount}"
+                               FontSize="10" FontWeight="Bold" Foreground="White"/>
+                </Border>
+                <Button Grid.Column="2" Style="{StaticResource OutlineButton}"
+                        Content="{Binding CollapseIcon}" Padding="4,2" FontSize="10"
+                        Click="OnToggleRefPanelClick"/>
+            </Grid>
         </Border>
 
-        <!-- ── CONTROLLI GENERAZIONE ──────────────────────────────────── -->
-        <Border Grid.Row="4" Padding="12,8"
-                BorderThickness="0,0,0,1" BorderBrush="{StaticResource BorderBrush2}">
+        <!-- 3 · REFERENCE LIST -->
+        <Border Grid.Row="3" MaxHeight="{Binding RefPanelMaxHeight}"
+                Visibility="{Binding RefPanelCollapsed,
+                             Converter={StaticResource BoolToVisConverter},
+                             ConverterParameter=inverse}">
+            <Grid>
+                <!-- Empty state -->
+                <Border Padding="20"
+                        Visibility="{Binding ReferenceCount, Converter={StaticResource InvCountToVisConverter}}">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <TextBlock Text="📂" FontSize="32" TextAlignment="Center"
+                                   HorizontalAlignment="Center" Opacity="0.3"/>
+                        <TextBlock Margin="0,10,0,0" TextAlignment="Center"
+                                   FontSize="11" Opacity="0.45" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource ToolWindowForeground}">
+                            Clic destro su file/cartelle nella Solution Explorer<LineBreak/>
+                            → <Bold>Aggiungi a ArchitectFlow References</Bold><LineBreak/><LineBreak/>
+                            oppure trascina qui i file.
+                        </TextBlock>
+                        <Button Style="{StaticResource OutlineButton}"
+                                Content="+ Sfoglia file…" Margin="0,12,0,0"
+                                HorizontalAlignment="Center" Click="OnBrowseFilesClick"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Populated list -->
+                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                              Visibility="{Binding ReferenceCount, Converter={StaticResource CountToVisConverter}}">
+                    <ItemsControl ItemsSource="{Binding ReferenceFiles}"
+                                  ItemTemplate="{StaticResource ReferenceFileTemplate}"/>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+
+        <!-- 4 · #FILE: PREVIEW -->
+        <Border Grid.Row="4" Padding="12,7"
+                Background="#0D6366F1"
+                BorderThickness="3,0,0,0"
+                BorderBrush="{StaticResource AccentBrush}"
+                Visibility="{Binding ReferenceCount,
+                             Converter={StaticResource CountToVisConverter}}">
+            <StackPanel>
+                <TextBlock Text="VERRÀ INIETTATO IN COPILOT:" FontSize="9"
+                           FontWeight="Bold" Opacity="0.55" Margin="0,0,0,4"
+                           Foreground="{DynamicResource ToolWindowForeground}"/>
+                <ItemsControl ItemsSource="{Binding ReferenceFiles}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock FontFamily="Consolas" FontSize="10"
+                                       Foreground="#818CF8" TextTrimming="CharacterEllipsis">
+                                <Run Text="#file:'"/><Run Text="{Binding FullPath}"/><Run Text="'"/>
+                            </TextBlock>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
+
+        <!-- 5 · DRAG HANDLE -->
+        <Border Grid.Row="5" Background="{StaticResource BorderColor}" Cursor="SizeNS"/>
+
+        <!-- 6 · MODE / OUTPUT -->
+        <Border Grid.Row="6" Padding="12,8"
+                BorderThickness="0,0,0,1" BorderBrush="{StaticResource BorderColor}">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="8"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
-
-                <!-- Modalità di generazione -->
                 <StackPanel Grid.Column="0">
-                    <TextBlock Text="MODALITÀ" FontSize="9" FontWeight="Bold"
-                               Opacity="0.55" Margin="0,0,0,3"
-                               Foreground="{DynamicResource {x:Static vsshell:VsBrushes.ToolWindowTextKey}}"/>
+                    <TextBlock Text="MODALITÀ" FontSize="9" FontWeight="Bold" Opacity="0.55"
+                               Margin="0,0,0,3" Foreground="{DynamicResource ToolWindowForeground}"/>
                     <ComboBox x:Name="ModeCombo" Style="{StaticResource VsComboBox}"
                               SelectionChanged="OnModeChanged">
                         <ComboBoxItem Content="🏗 CQRS Command"       Tag="cqrs_command"  IsSelected="True"/>
@@ -439,76 +433,72 @@
                         <ComboBoxItem Content="✍ Freeform"            Tag="freeform"/>
                     </ComboBox>
                 </StackPanel>
-
-                <!-- Output target -->
                 <StackPanel Grid.Column="2">
-                    <TextBlock Text="OUTPUT" FontSize="9" FontWeight="Bold"
-                               Opacity="0.55" Margin="0,0,0,3"
-                               Foreground="{DynamicResource {x:Static vsshell:VsBrushes.ToolWindowTextKey}}"/>
+                    <TextBlock Text="OUTPUT" FontSize="9" FontWeight="Bold" Opacity="0.55"
+                               Margin="0,0,0,3" Foreground="{DynamicResource ToolWindowForeground}"/>
                     <ComboBox x:Name="OutputCombo" Style="{StaticResource VsComboBox}">
-                        <ComboBoxItem Content="📋 Pannello output"    Tag="panel"  IsSelected="True"/>
-                        <ComboBoxItem Content="📄 Nuovo file .cs"     Tag="new_file"/>
-                        <ComboBoxItem Content="📝 Editor attivo"      Tag="active_editor"/>
-                        <ComboBoxItem Content="📋 Clipboard"          Tag="clipboard"/>
+                        <ComboBoxItem Content="📋 Pannello output" Tag="panel"         IsSelected="True"/>
+                        <ComboBoxItem Content="📄 Nuovo file .cs"  Tag="new_file"/>
+                        <ComboBoxItem Content="📝 Editor attivo"   Tag="active_editor"/>
+                        <ComboBoxItem Content="📋 Clipboard"       Tag="clipboard"/>
                     </ComboBox>
                 </StackPanel>
             </Grid>
         </Border>
 
-        <!-- ── AREA PROMPT ─────────────────────────────────────────────── -->
-        <Grid Grid.Row="5">
+        <!-- 6 · PROMPT -->
+        <Grid Grid.Row="7" Margin="12,8">
             <TextBox x:Name="PromptBox"
-                     Style="{StaticResource PromptBox}"
-                     Text="{Binding PromptText, UpdateSourceTrigger=PropertyChanged}"
-                     KeyDown="OnPromptKeyDown"
-                     Margin="12,8"/>
-
-            <!-- Placeholder -->
-            <TextBlock IsHitTestVisible="False"
-                       Padding="20,16,20,0" FontFamily="Consolas" FontSize="12"
-                       Foreground="{StaticResource MutedBrush}"
-                       TextWrapping="Wrap"
+                         Style="{StaticResource PromptBoxStyle}"
+                         Text="{Binding PromptText, UpdateSourceTrigger=PropertyChanged}"
+                         KeyDown="OnPromptKeyDown"/>
+            <TextBlock IsHitTestVisible="False" Padding="10,10,10,0"
+                       FontFamily="Consolas" FontSize="12"
+                       Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap"
                        Visibility="{Binding IsPromptEmpty, Converter={StaticResource BoolToVisConverter}}">
                 Descrivi il codice da generare…<LineBreak/>
-                Es: "CreateOrderCommand con validazione FluentValidation"<LineBreak/>
+                Es: "CreateOrderCommand con FluentValidation"<LineBreak/>
                 (Ctrl+Invio per generare)
             </TextBlock>
         </Grid>
 
-        <!-- ── AZIONI PROMPT ────────────────────────────────────────────── -->
-        <Border Grid.Row="6" Padding="12,6"
-                BorderThickness="0,1,0,0" BorderBrush="{StaticResource BorderBrush2}">
+        <!-- 7 · PROMPT ACTIONS -->
+        <Border Grid.Row="8" Padding="12,6"
+                BorderThickness="0,1,0,0" BorderBrush="{StaticResource BorderColor}">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-
-                <!-- Info riferimenti nel prompt -->
-                <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="10"
-                           Foreground="{StaticResource MutedBrush}">
+                <TextBlock Grid.Column="0" VerticalAlignment="Center"
+                           FontSize="10" Foreground="{StaticResource MutedBrush}">
                     <Run Text="Ctrl+Invio · "/>
                     <Run Text="{Binding ReferenceCount, Mode=OneWay}"
                          Foreground="{StaticResource AccentBrush}"/>
                     <Run Text=" ref attivi"/>
                 </TextBlock>
-
-                <!-- Pulsante genera / ferma -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
                     <Button Style="{StaticResource OutlineButton}"
                             Content="🗑" Padding="6,4" Margin="0,0,6,0"
                             ToolTip="Pulisci prompt"
                             Click="OnClearPromptClick"/>
-                    <Button x:Name="StopBtn"
-                            Style="{StaticResource DangerButton}"
+                    <!--
+                        Copia negli appunti il prompt completo con i riferimenti #file:'path'
+                        per ogni file selezionato. L'utente può incollarlo manualmente
+                        in Copilot Chat (Ctrl+V → Invio) senza usare il loop automatico.
+                    -->
+                    <Button Style="{StaticResource OutlineButton}"
+                            Content="📎 Copia prompt" Padding="8,4" Margin="0,0,6,0"
+                            ToolTip="Copia il prompt con i riferimenti #file: negli appunti.&#x0a;Incolla manualmente in Copilot Chat con Ctrl+V."
+                            IsEnabled="{Binding CanGenerate}"
+                            Click="OnCopyPromptClick"/>
+                    <Button Style="{StaticResource DangerButton}"
                             Content="⏹ Stop" Padding="10,4" Margin="0,0,6,0"
                             IsEnabled="{Binding IsGenerating}"
                             Visibility="{Binding IsGenerating, Converter={StaticResource BoolToVisConverter}}"
                             Click="OnStopClick"/>
-                    <Button x:Name="GenerateBtn"
-                            Style="{StaticResource PrimaryButton}"
-                            IsEnabled="{Binding CanGenerate}"
-                            Click="OnGenerateClick">
+                    <Button Style="{StaticResource PrimaryButton}"
+                            IsEnabled="{Binding CanGenerate}" Click="OnGenerateClick">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="✨" Margin="0,0,5,0"/>
                             <TextBlock Text="{Binding GenerateButtonLabel}"/>
@@ -518,122 +508,211 @@
             </Grid>
         </Border>
 
-        <!-- ── SEPARATORE ──────────────────────────────────────────────── -->
-        <Border Grid.Row="7" Background="{StaticResource BorderBrush2}"/>
+        <!-- ══ AGENT LOOP PANEL ══════════════════════════════════════════ -->
+        <!--
+            Il pannello del loop agente si trova tra le azioni prompt e l'output.
+            Mostra: pulsante avvio/stop, max iterazioni, progresso iterazione corrente,
+            indicatore di fase (inject / build / done / error), badge errori.
+        -->
+        <Border Grid.Row="9" BorderThickness="0,0,0,1" BorderBrush="{StaticResource BorderColor}">
+            <Expander IsExpanded="True">
+                <Expander.Header>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="🤖" Margin="0,0,6,0"/>
+                        <TextBlock Text="COPILOT LOOP" FontSize="10" FontWeight="Bold"
+                                   Opacity="0.65"
+                                   Foreground="{DynamicResource ToolWindowForeground}"
+                                   VerticalAlignment="Center"/>
+                        <!-- Badge "RUNNING" -->
+                        <Border Margin="8,0,0,0"
+                                Background="{StaticResource AccentBrush}"
+                                CornerRadius="3" Padding="5,1"
+                                VerticalAlignment="Center"
+                                Visibility="{Binding IsLoopRunning, Converter={StaticResource BoolToVisConverter}}">
+                            <TextBlock Text="● IN ESECUZIONE" FontSize="8" FontWeight="Bold"
+                                       Foreground="White"/>
+                        </Border>
+                    </StackPanel>
+                </Expander.Header>
 
-        <!-- ── OUTPUT PANEL ────────────────────────────────────────────── -->
-        <Grid Grid.Row="8">
+                <StackPanel Margin="12,4,12,10">
+
+                    <!-- Riga 1: Configurazione max iterazioni + pulsante avvio/stop -->
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Grid.Column="0" Text="Max iterazioni:"
+                                   FontSize="11" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource ToolWindowForeground}"/>
+                        <TextBox Grid.Column="1" Width="40" Margin="6,0,12,0"
+                                 Text="{Binding LoopMaxIterations, UpdateSourceTrigger=PropertyChanged}"
+                                 FontSize="11" Padding="4,2"
+                                 Background="{DynamicResource ToolWindowBackground}"
+                                 Foreground="{DynamicResource ToolWindowForeground}"
+                                 BorderBrush="{StaticResource BorderColor}"
+                                 VerticalContentAlignment="Center"/>
+
+                        <!-- Pulsante Avvia / Stop -->
+                        <Button Grid.Column="3" Padding="12,5"
+                                Click="OnStartLoopClick">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsLoopRunning}" Value="True">
+                                            <Setter Property="Background" Value="{StaticResource DangerBrush}"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding LoopPhaseIcon}" Margin="0,0,5,0"/>
+                                <TextBlock Text="{Binding LoopButtonLabel}"/>
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+
+                    <!-- Riga 2: Barra progresso iterazioni -->
+                    <Grid Margin="0,8,0,0"
+                          Visibility="{Binding IsLoopRunning, Converter={StaticResource BoolToVisConverter}}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Border Grid.Column="0" Height="6" CornerRadius="3"
+                                Background="{StaticResource BorderColor}">
+                            <Border CornerRadius="3" Background="{StaticResource AccentBrush}"
+                                    HorizontalAlignment="Left">
+                                <Border.Width>
+                                    <MultiBinding Converter="{StaticResource ProgressWidthConverter}">
+                                        <Binding Path="LoopIteration"/>
+                                        <Binding Path="LoopMaxIterations"/>
+                                        <Binding Path="ActualWidth"
+                                                 RelativeSource="{RelativeSource AncestorType=Border,
+                                                                  AncestorLevel=1}"/>
+                                    </MultiBinding>
+                                </Border.Width>
+                            </Border>
+                        </Border>
+
+                        <TextBlock Grid.Column="1" Margin="8,0,0,0"
+                                   FontSize="10" Foreground="{StaticResource MutedBrush}"
+                                   Text="{Binding LoopProgressText}"
+                                   VerticalAlignment="Center"/>
+                    </Grid>
+
+                    <!-- Riga 3: Errori correnti -->
+                    <Border Margin="0,6,0,0" Padding="8,5"
+                            Background="#1AEF4444" CornerRadius="4"
+                            Visibility="{Binding LoopErrorCount, Converter={StaticResource CountToVisConverter}}">
+                        <TextBlock FontSize="11" Foreground="{StaticResource DangerBrush}">
+                            <Run Text="⚠ "/>
+                            <Run Text="{Binding LoopErrorCount, Mode=OneWay}"/>
+                            <Run Text=" errori di compilazione — Copilot sta correggendo…"/>
+                        </TextBlock>
+                    </Border>
+
+                </StackPanel>
+            </Expander>
+        </Border>
+
+        <!-- 9 · SEPARATOR -->
+        <Border Grid.Row="10" Background="{StaticResource BorderColor}"/>
+
+        <!-- 10 · OUTPUT -->
+        <Grid Grid.Row="11">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <!-- Header output -->
+            <!-- Output header -->
             <Border Grid.Row="0" Padding="12,6"
-                    Background="#0AFFFFFF"
-                    BorderThickness="0,0,0,1" BorderBrush="{StaticResource BorderBrush2}">
+                    Background="{StaticResource SurfaceOverlay}"
+                    BorderThickness="0,0,0,1" BorderBrush="{StaticResource BorderColor}">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-
                     <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="OUTPUT" FontSize="10" FontWeight="Bold"
-                                   Opacity="0.6" VerticalAlignment="Center"
-                                   Foreground="{DynamicResource {x:Static vsshell:VsBrushes.ToolWindowTextKey}}"/>
-
-                        <!-- Spinner generazione -->
-                        <Border Margin="10,0,0,0"
-                                Visibility="{Binding IsGenerating, Converter={StaticResource BoolToVisConverter}}">
-                            <StackPanel Orientation="Horizontal">
-                                <Ellipse Width="6" Height="6" Fill="{StaticResource AccentBrush}"
-                                         VerticalAlignment="Center" Margin="0,0,4,0">
-                                    <Ellipse.RenderTransform>
-                                        <RotateTransform/>
-                                    </Ellipse.RenderTransform>
-                                    <Ellipse.Style>
-                                        <Style TargetType="Ellipse">
-                                            <Style.Triggers>
-                                                <EventTrigger RoutedEvent="Loaded">
-                                                    <BeginStoryboard>
-                                                        <Storyboard RepeatBehavior="Forever">
-                                                            <DoubleAnimation
-                                                                Storyboard.TargetProperty="Opacity"
-                                                                From="1" To="0.2"
-                                                                Duration="0:0:0.6"
-                                                                AutoReverse="True"/>
-                                                        </Storyboard>
-                                                    </BeginStoryboard>
-                                                </EventTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Ellipse.Style>
-                                </Ellipse>
-                                <TextBlock Text="Generazione in corso…" FontSize="10"
-                                           Foreground="{StaticResource AccentBrush}"/>
-                            </StackPanel>
-                        </Border>
+                        <TextBlock Text="OUTPUT" FontSize="10" FontWeight="Bold" Opacity="0.6"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource ToolWindowForeground}"/>
+                        <StackPanel Orientation="Horizontal" Margin="10,0,0,0"
+                                    Visibility="{Binding IsGenerating,
+                                                 Converter={StaticResource BoolToVisConverter}}">
+                            <Ellipse Width="6" Height="6" Fill="{StaticResource AccentBrush}"
+                                     VerticalAlignment="Center" Margin="0,0,4,0">
+                                <Ellipse.Style>
+                                    <Style TargetType="Ellipse">
+                                        <Style.Triggers>
+                                            <EventTrigger RoutedEvent="Loaded">
+                                                <BeginStoryboard>
+                                                    <Storyboard RepeatBehavior="Forever">
+                                                        <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                         From="1" To="0.2"
+                                                                         Duration="0:0:0.6" AutoReverse="True"/>
+                                                    </Storyboard>
+                                                </BeginStoryboard>
+                                            </EventTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Ellipse.Style>
+                            </Ellipse>
+                            <TextBlock Text="Generazione in corso…" FontSize="10"
+                                       Foreground="{StaticResource AccentBrush}"/>
+                        </StackPanel>
                     </StackPanel>
-
-                    <!-- Azioni output -->
                     <StackPanel Grid.Column="1" Orientation="Horizontal">
-                        <Button Style="{StaticResource OutlineButton}"
-                                Content="📋 Copia" Padding="6,3" Margin="0,0,4,0" FontSize="10"
-                                IsEnabled="{Binding HasOutput}"
-                                Click="OnCopyOutputClick"/>
-                        <Button Style="{StaticResource OutlineButton}"
-                                Content="⬆ Inserisci" Padding="6,3" Margin="0,0,4,0" FontSize="10"
-                                IsEnabled="{Binding HasOutput}"
-                                ToolTip="Inserisce nell'editor attivo al cursore"
-                                Click="OnInsertToEditorClick"/>
-                        <Button Style="{StaticResource OutlineButton}"
-                                Content="💾 Salva .cs" Padding="6,3" FontSize="10"
-                                IsEnabled="{Binding HasOutput}"
-                                ToolTip="Salva come nuovo file .cs nel progetto"
-                                Click="OnSaveAsFileClick"/>
+                        <Button Style="{StaticResource OutlineButton}" Content="📋 Copia"
+                                Padding="6,3" Margin="0,0,4,0" FontSize="10"
+                                IsEnabled="{Binding HasOutput}" Click="OnCopyOutputClick"/>
+                        <Button Style="{StaticResource OutlineButton}" Content="⬆ Inserisci"
+                                Padding="6,3" Margin="0,0,4,0" FontSize="10"
+                                IsEnabled="{Binding HasOutput}" Click="OnInsertToEditorClick"/>
+                        <Button Style="{StaticResource OutlineButton}" Content="💾 Salva .cs"
+                                Padding="6,3" FontSize="10"
+                                IsEnabled="{Binding HasOutput}" Click="OnSaveAsFileClick"/>
                     </StackPanel>
                 </Grid>
             </Border>
 
-            <!-- Area testo output (read-only, monospace) -->
-            <Border Grid.Row="1" Background="#0A000000">
-                <ScrollViewer x:Name="OutputScroll" VerticalScrollBarVisibility="Auto"
-                              HorizontalScrollBarVisibility="Auto">
-                    <TextBox x:Name="OutputTextBox"
-                             IsReadOnly="True"
-                             FontFamily="Consolas"
-                             FontSize="11.5"
-                             Background="Transparent"
-                             BorderThickness="0"
-                             Foreground="{DynamicResource {x:Static vsshell:VsBrushes.ToolWindowTextKey}}"
-                             Text="{Binding OutputText}"
-                             TextWrapping="Wrap"
-                             Padding="12,10"
-                             VerticalAlignment="Stretch"/>
+            <!-- Output text area -->
+            <Grid Grid.Row="1">
+                <ScrollViewer x:Name="OutputScroll" VerticalScrollBarVisibility="Auto">
+                    <TextBox IsReadOnly="True" FontFamily="Consolas" FontSize="11.5"
+                             Background="Transparent" BorderThickness="0"
+                             Foreground="{DynamicResource ToolWindowForeground}"
+                             Text="{Binding OutputText, Mode=OneWay}"
+                             TextWrapping="Wrap" Padding="12,10"/>
                 </ScrollViewer>
-            </Border>
-
-            <!-- Placeholder output vuoto -->
-            <Border Grid.Row="1" Padding="20" IsHitTestVisible="False"
-                    Visibility="{Binding HasOutput, Converter={StaticResource BoolToVisConverter}, ConverterParameter=inverse}">
-                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.25">
+                <!-- Placeholder vuoto -->
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                            Opacity="0.25" IsHitTestVisible="False"
+                            Visibility="{Binding HasOutput,
+                                         Converter={StaticResource BoolToVisConverter},
+                                         ConverterParameter=inverse}">
                     <TextBlock Text="⚡" FontSize="40" TextAlignment="Center"
                                HorizontalAlignment="Center"/>
-                    <TextBlock Text="Il codice generato apparirà qui"
-                               FontSize="12" TextAlignment="Center" Margin="0,8,0,0"
-                               Foreground="{DynamicResource {x:Static vsshell:VsBrushes.ToolWindowTextKey}}"/>
+                    <TextBlock Text="Il codice generato apparirà qui" FontSize="12"
+                               TextAlignment="Center" Margin="0,8,0,0"
+                               Foreground="{DynamicResource ToolWindowForeground}"/>
                 </StackPanel>
-            </Border>
+            </Grid>
 
-            <!-- Token count / info -->
+            <!-- Status -->
             <Border Grid.Row="2" Padding="12,4"
-                    BorderThickness="0,1,0,0" BorderBrush="{StaticResource BorderBrush2}">
+                    BorderThickness="0,1,0,0" BorderBrush="{StaticResource BorderColor}">
                 <TextBlock FontSize="10" Foreground="{StaticResource MutedBrush}"
                            Text="{Binding StatusText}"/>
             </Border>
         </Grid>
-
     </Grid>
 </UserControl>

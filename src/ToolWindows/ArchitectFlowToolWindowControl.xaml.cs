@@ -1,4 +1,10 @@
+using ArchitectFlow_AI.Models;
+using ArchitectFlow_AI.Services;
+using Microsoft.VisualStudio.PlatformUI;
+using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio.Shell.Interop;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
@@ -11,74 +17,10 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
-using ArchitectFlow_AI.Models;
-using ArchitectFlow_AI.Services;
-using Microsoft.VisualStudio.Shell;
-using Microsoft.VisualStudio.Shell.Interop;
+using System.Windows.Media;
 
 namespace ArchitectFlow_AI.ToolWindows
 {
-    // ══════════════════════════════════════════════════════════════════════
-    //  CONVERTERS
-    // ══════════════════════════════════════════════════════════════════════
-
-    public class LanguageToIconConverter : IValueConverter
-    {
-        public object Convert(object value, Type t, object p, CultureInfo c)
-        {
-            return (value as string) switch
-            {
-                "csharp"      => "🔷",
-                "typescript"  => "🟦",
-                "javascript"  => "🟡",
-                "python"      => "🐍",
-                "java"        => "☕",
-                "go"          => "🐹",
-                "rust"        => "🦀",
-                "cpp"         => "⚙",
-                "sql"         => "🗃",
-                "json"        => "{ }",
-                "yaml"        => "📋",
-                "xml"         => "📄",
-                "razor"       => "🪥",
-                "markdown"    => "📝",
-                "html"        => "🌐",
-                "css"         => "🎨",
-                "powershell"  => "💙",
-                _             => "📄",
-            };
-        }
-        public object ConvertBack(object v, Type t, object p, CultureInfo c)
-            => Binding.DoNothing;
-    }
-
-    public class CountToVisibilityConverter : IValueConverter
-    {
-        public object Convert(object value, Type t, object p, CultureInfo c)
-            => (value is int n && n > 0) ? Visibility.Visible : Visibility.Collapsed;
-        public object ConvertBack(object v, Type t, object p, CultureInfo c)
-            => Binding.DoNothing;
-    }
-
-    public class InverseCountToVisibilityConverter : IValueConverter
-    {
-        public object Convert(object value, Type t, object p, CultureInfo c)
-            => (value is int n && n == 0) ? Visibility.Visible : Visibility.Collapsed;
-        public object ConvertBack(object v, Type t, object p, CultureInfo c)
-            => Binding.DoNothing;
-    }
-
-    public class BoolToVisibilityConverter : IValueConverter
-    {
-        public object Convert(object value, Type t, object p, CultureInfo c)
-        {
-            bool b = value is bool bv && bv;
-            bool inverse = p?.ToString() == "inverse";
-            return (b ^ inverse) ? Visibility.Visible : Visibility.Collapsed;
-        }
-        public object ConvertBack(object v, Type t, object p, CultureInfo c)
-            => Binding.DoNothing;
-    }
 
     // ══════════════════════════════════════════════════════════════════════
     //  VIEWMODEL
@@ -105,14 +47,16 @@ namespace ArchitectFlow_AI.ToolWindows
                 OnPropertyChanged(nameof(ReferenceCount));
                 OnPropertyChanged(nameof(HasReferences));
                 OnPropertyChanged(nameof(CanGenerate));
+                OnPropertyChanged(nameof(CanStartLoop));
                 OnPropertyChanged(nameof(GenerateButtonLabel));
+                OnPropertyChanged(nameof(RefPanelMaxHeight));
             };
         }
 
         // ── Reference files ──────────────────────────────────────────────
         public ObservableCollection<ReferenceFile> ReferenceFiles { get; }
-        public int  ReferenceCount => _refMgr.Count;
-        public bool HasReferences  => _refMgr.Count > 0;
+        public int ReferenceCount => _refMgr.Count;
+        public bool HasReferences => _refMgr.Count > 0;
 
         // ── Prompt ───────────────────────────────────────────────────────
         public string PromptText
@@ -155,24 +99,50 @@ namespace ArchitectFlow_AI.ToolWindows
             }
         }
 
-        public bool CanGenerate => !IsGenerating && !IsPromptEmpty;
+        public bool CanGenerate => !IsGenerating && !IsLoopRunning && !IsPromptEmpty;
 
         public string GenerateButtonLabel =>
             IsGenerating ? "Generazione…" : "Genera";
+
+        // ── Costruzione prompt ─────────────────────────────────────────────
+
+        /// <summary>
+        /// Costruisce il prompt completo con i #file: + contenuto inline.
+        /// Usato per il path Copilot Chat (loop agente).
+        /// </summary>
+        public string BuildCopilotPrompt(string userPrompt)
+        {
+            var globalMgr = ArchitectFlowPackage.Instance?.ReferenceFileManager;
+            return CopilotBridgeService.BuildFullPrompt(userPrompt, globalMgr);
+        }
+
+        /// <summary>
+        /// Costruisce il prompt autocontenuto con il contenuto completo dei file.
+        /// Usato per il clipboard e per la verifica visiva.
+        /// </summary>
+        public string BuildSelfContainedPrompt(string userPrompt)
+        {
+            var globalMgr = ArchitectFlowPackage.Instance?.ReferenceFileManager;
+            return CopilotBridgeService.BuildFullPromptWithContent(userPrompt, globalMgr);
+        }
 
         // ── UI stato pannello ────────────────────────────────────────────
         public bool RefPanelCollapsed
         {
             get => _refPanelCollapsed;
-            set { _refPanelCollapsed = value; OnPropertyChanged(); OnPropertyChanged(nameof(CollapseIcon)); OnPropertyChanged(nameof(RefPanelHeight)); }
+            set
+            {
+                _refPanelCollapsed = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(CollapseIcon));
+                OnPropertyChanged(nameof(RefPanelMaxHeight));
+            }
         }
 
         public string CollapseIcon => _refPanelCollapsed ? "▼" : "▲";
 
-        public GridLength RefPanelHeight =>
-            _refPanelCollapsed
-                ? new GridLength(0)
-                : new GridLength(Math.Min(220, Math.Max(80, ReferenceCount * 38 + 10)));
+        public double RefPanelMaxHeight =>
+            _refPanelCollapsed ? 0 : Math.Min(220, Math.Max(80, ReferenceCount * 38 + 10));
 
         // ── Streaming output ─────────────────────────────────────────────
 
@@ -198,6 +168,62 @@ namespace ArchitectFlow_AI.ToolWindows
             StatusText = $"✓ Completato · {chars:N0} caratteri · {lines} righe · {DateTime.Now:HH:mm:ss}";
         }
 
+        // ── Loop agente ──────────────────────────────────────────────────
+
+        private bool _loopRunning;
+        private int _loopIteration;
+        private int _loopMaxIterations = 10;
+        private int _loopErrorCount;
+        private string _loopPhase = string.Empty;
+
+        public bool IsLoopRunning
+        {
+            get => _loopRunning;
+            set { _loopRunning = value; OnPropertyChanged(); OnPropertyChanged(nameof(CanStartLoop)); OnPropertyChanged(nameof(LoopButtonLabel)); }
+        }
+
+        public int LoopIteration
+        {
+            get => _loopIteration;
+            set { _loopIteration = value; OnPropertyChanged(); OnPropertyChanged(nameof(LoopProgressText)); }
+        }
+
+        public int LoopMaxIterations
+        {
+            get => _loopMaxIterations;
+            set { _loopMaxIterations = value; OnPropertyChanged(); }
+        }
+
+        public int LoopErrorCount
+        {
+            get => _loopErrorCount;
+            set { _loopErrorCount = value; OnPropertyChanged(); }
+        }
+
+        public string LoopPhase
+        {
+            get => _loopPhase;
+            set { _loopPhase = value; OnPropertyChanged(); OnPropertyChanged(nameof(LoopPhaseIcon)); }
+        }
+
+        public string LoopPhaseIcon => _loopPhase switch
+        {
+            "inject" => "📝",
+            "build" => "🔨",
+            "done" => "✅",
+            "error" => "❌",
+            _ => "⏳",
+        };
+
+        public string LoopProgressText =>
+            _loopRunning
+                ? $"Iterazione {_loopIteration}/{_loopMaxIterations} · {_loopErrorCount} errori"
+                : "Pronto";
+
+        public bool CanStartLoop => !IsLoopRunning && !IsPromptEmpty;
+
+        public string LoopButtonLabel => IsLoopRunning ? "Stop Loop" : "▶ Avvia Loop AI";
+
         public void SetError(string message)
         {
             IsGenerating = false;
@@ -219,6 +245,7 @@ namespace ArchitectFlow_AI.ToolWindows
     {
         private ArchitectFlowViewModel _vm;
         private CancellationTokenSource _cts;
+        private bool _apiEventsHooked;
 
         public ArchitectFlowToolWindowControl()
         {
@@ -228,17 +255,67 @@ namespace ArchitectFlow_AI.ToolWindows
 
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
-            // Aspetta che il package sia inizializzato
-            if (ArchitectFlowPackage.Instance == null) return;
+            RegisterVsThemeResources();
+            EnsureInitialized();
+        }
+
+        /// <summary>
+        /// Inizializzazione idempotente del ViewModel e dei callback.
+        /// Può essere chiamata più volte in sicurezza (ad es. da OnLoaded,
+        /// dal comando AddToReferences, o da GetOrCreateToolWindowAsync).
+        /// Usa il Package come unico punto di verità.
+        /// </summary>
+        public void EnsureInitialized()
+        {
+            if (_vm != null) return; // Già inizializzato
+            if (ArchitectFlowPackage.Instance?.ReferenceFileManager == null) return;
 
             _vm = new ArchitectFlowViewModel(ArchitectFlowPackage.Instance.ReferenceFileManager);
             DataContext = _vm;
 
-            // Aggancia i callback di streaming dell'API service
-            var api = ArchitectFlowPackage.Instance.ClaudeApiService;
-            api.ChunkReceived      += OnChunkReceived;
-            api.ErrorOccurred      += OnApiError;
-            api.GenerationCompleted += OnGenerationCompleted;
+            // Aggancia i callback di streaming dell'API service (una sola volta)
+            if (!_apiEventsHooked && ArchitectFlowPackage.Instance.ClaudeApiService != null)
+            {
+                var api = ArchitectFlowPackage.Instance.ClaudeApiService;
+                api.ChunkReceived += OnChunkReceived;
+                api.ErrorOccurred += OnApiError;
+                api.GenerationCompleted += OnGenerationCompleted;
+                _apiEventsHooked = true;
+            }
+        }
+
+        /// <summary>
+        /// Popola le DynamicResource "ToolWindowBackground" e "ToolWindowForeground"
+        /// con i colori del tema VS attivo. Nessun riferimento a vsshell nel XAML
+        /// evita l'errore "assembly not found" a design-time.
+        /// </summary>
+        private void RegisterVsThemeResources()
+        {
+            try
+            {
+                // Recupera i colori dal tema VS corrente via EnvironmentColors
+                var bgColor = Microsoft.VisualStudio.PlatformUI.EnvironmentColors
+                    .ToolWindowBackgroundColorKey;
+                var fgColor = Microsoft.VisualStudio.PlatformUI.EnvironmentColors
+                    .ToolWindowTextColorKey;
+
+                var bg = VSColorTheme.GetThemedColor(bgColor);
+                var fg = VSColorTheme.GetThemedColor(fgColor);
+
+                Resources["ToolWindowBackground"] =
+                    new SolidColorBrush(Color.FromArgb(bg.A, bg.R, bg.G, bg.B));
+                Resources["ToolWindowForeground"] =
+                    new SolidColorBrush(Color.FromArgb(fg.A, fg.R, fg.G, fg.B));
+
+                // Aggiorna i colori se il tema cambia
+                VSColorTheme.ThemeChanged += _ => Dispatcher.Invoke(RegisterVsThemeResources);
+            }
+            catch
+            {
+                // Fallback neutro se VS non è disponibile (design-time)
+                Resources["ToolWindowBackground"] = new SolidColorBrush(Color.FromRgb(30, 30, 30));
+                Resources["ToolWindowForeground"] = new SolidColorBrush(Colors.WhiteSmoke);
+            }
         }
 
         // ── Streaming callbacks ──────────────────────────────────────────
@@ -285,12 +362,23 @@ namespace ArchitectFlow_AI.ToolWindows
 
         private async Task StartGenerationAsync()
         {
-            if (!_vm.CanGenerate) return;
+            if (_vm == null || !_vm.CanGenerate) return;
 
             _cts?.Cancel();
             _cts = new CancellationTokenSource();
 
+            // Se il manager è vuoto, cattura automaticamente
+            // i file selezionati nella Solution Explorer.
+            AutoAddFromSolutionExplorerIfEmpty();
+
+            // Mostra all'utente quanti file di riferimento verranno inviati.
+            // I file vanno nel system prompt di Claude (via BuildContextPayload),
+            // il testo dell'utente va nel messaggio utente.
+            int refCount = ArchitectFlowPackage.Instance?.ReferenceFileManager?.Count ?? 0;
             _vm.BeginGeneration();
+            _vm.StatusText = refCount > 0
+                ? $"⏳ Invio a Claude: {refCount} file di riferimento + prompt…"
+                : "⏳ Invio a Claude (nessun file di riferimento)…";
 
             var mode = (ModeCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "freeform";
 
@@ -313,14 +401,14 @@ namespace ArchitectFlow_AI.ToolWindows
             switch (target)
             {
                 case "clipboard":
-                    CopyToClipboard();
-                    break;
+                CopyToClipboard();
+                break;
                 case "active_editor":
-                    _ = InsertToActiveEditorAsync();
-                    break;
+                _ = InsertToActiveEditorAsync();
+                break;
                 case "new_file":
-                    _ = SaveAsNewFileAsync();
-                    break;
+                _ = SaveAsNewFileAsync();
+                break;
                 // "panel" → già mostrato, niente da fare
             }
         }
@@ -477,6 +565,33 @@ namespace ArchitectFlow_AI.ToolWindows
             PromptBox.Focus();
         }
 
+        private void OnCopyPromptClick(object sender, RoutedEventArgs e)
+        {
+            // Se il manager è vuoto, cattura automaticamente
+            // i file selezionati nella Solution Explorer.
+            AutoAddFromSolutionExplorerIfEmpty();
+
+            var manager = ArchitectFlowPackage.Instance?.ReferenceFileManager;
+            int fileCount = manager?.Count ?? 0;
+
+            // Costruisce il prompt COMPLETO con il contenuto dei file inline.
+            // Questo rende il prompt autocontenuto: il contenuto dei file
+            // è visibile quando si incolla ovunque (Copilot Chat, ChatGPT, ecc.).
+            string fullPrompt = CopilotBridgeService.BuildFullPromptWithContent(
+                _vm.PromptText, manager);
+
+            System.Windows.Clipboard.SetText(fullPrompt);
+
+            if (fileCount > 0)
+            {
+                _vm.StatusText = $"📋 Copiato: {fileCount} file + prompt ({fullPrompt.Length:N0} caratteri)";
+            }
+            else
+            {
+                _vm.StatusText = "📋 Copiato (nessun file di riferimento selezionato).";
+            }
+        }
+
         private void OnToggleRefPanelClick(object sender, RoutedEventArgs e)
         {
             _vm.RefPanelCollapsed = !_vm.RefPanelCollapsed;
@@ -496,6 +611,108 @@ namespace ArchitectFlow_AI.ToolWindows
             {
                 await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
                 ArchitectFlowPackage.Instance?.ShowOptionPage(typeof(ArchitectFlowOptionsPage));
+            });
+        }
+
+        // ── Auto-add dalla Solution Explorer ──────────────────────────────
+
+        /// <summary>
+        /// Se il ReferenceFileManager è vuoto, aggiunge automaticamente
+        /// i file attualmente selezionati nella Solution Explorer.
+        /// Permette all'utente di selezionare file in SE e generare
+        /// il prompt senza il passaggio esplicito "Aggiungi a ArchitectFlow".
+        /// </summary>
+        private void AutoAddFromSolutionExplorerIfEmpty()
+        {
+            var mgr = ArchitectFlowPackage.Instance?.ReferenceFileManager;
+            if (mgr == null || mgr.Count > 0) return;
+
+            var files = SolutionExplorerHelper.GetSelectedFiles();
+            if (files.Count == 0) return;
+
+            int added = mgr.AddRange(files);
+            if (added > 0 && _vm != null)
+                _vm.StatusText = $"📎 Auto-aggiunti {added} file dalla Solution Explorer.";
+        }
+
+        // ── Agent Loop ────────────────────────────────────────────────────
+
+        private void OnStartLoopClick(object sender, RoutedEventArgs e)
+        {
+            if (_vm.IsLoopRunning)
+            {
+                ArchitectFlowPackage.Instance?.AgentLoop?.Stop();
+                _vm.IsLoopRunning = false;
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(_vm.PromptText)) return;
+
+            // Se il manager è vuoto, cattura automaticamente
+            // i file selezionati nella Solution Explorer.
+            AutoAddFromSolutionExplorerIfEmpty();
+
+            var loop = ArchitectFlowPackage.Instance?.AgentLoop;
+            if (loop == null)
+            {
+                _vm.StatusText = "❌ AgentLoopService non disponibile.";
+                return;
+            }
+
+            _vm.IsLoopRunning = true;
+            _vm.LoopIteration = 0;
+            _vm.LoopErrorCount = 0;
+            _vm.LoopPhase = "inject";
+            _vm.OutputText = string.Empty;
+
+            // Leggi le opzioni dalle impostazioni dell'estensione
+            var settings = ArchitectFlowPackage.Instance
+                ?.GetDialogPage(typeof(ArchitectFlowOptionsPage)) as ArchitectFlowOptionsPage;
+
+            var options = new AgentLoopOptions
+            {
+                MaxIterations = settings?.MaxLoopIterations ?? _vm.LoopMaxIterations,
+                DelayAfterGenerationSeconds = settings?.DelayAfterGenerationSeconds ?? 2,
+                TreatWarningsAsErrors = settings?.TreatWarningsAsErrors ?? false,
+            };
+
+            // Sincronizza il valore dal pannello UI (può essere stato modificato dall'utente)
+            options.MaxIterations = _vm.LoopMaxIterations;
+
+            // Aggancia gli eventi del loop
+            loop.IterationChanged -= OnLoopIterationChanged;
+            loop.LogMessage -= OnLoopLogMessage;
+            loop.IterationChanged += OnLoopIterationChanged;
+            loop.LogMessage += OnLoopLogMessage;
+
+            _ = loop.StartAsync(_vm.PromptText, options)
+                .ContinueWith(_ => Dispatcher.Invoke(() =>
+                {
+                    _vm.IsLoopRunning = false;
+                    _vm.StatusText = _vm.LoopPhase == "done"
+                        ? "✅ Loop completato con successo!"
+                        : "⏹ Loop terminato.";
+                }));
+        }
+
+        private void OnLoopIterationChanged(object sender, LoopIterationState state)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                _vm.LoopIteration = state.Iteration;
+                _vm.LoopErrorCount = state.ErrorCount;
+                _vm.LoopPhase = state.Phase;
+                _vm.StatusText = state.StatusMessage;
+                _vm.IsLoopRunning = state.Phase != "done" && state.Phase != "error";
+            });
+        }
+
+        private void OnLoopLogMessage(object sender, string message)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                _vm.AppendChunk(message + "\n");
+                OutputScroll.ScrollToBottom();
             });
         }
     }

@@ -29,9 +29,9 @@ namespace ArchitectFlow_AI.Services
         }
 
         // ── Evento per lo streaming del testo ────────────────────────────────
-        public event EventHandler<string> ChunkReceived;
-        public event EventHandler<string> ErrorOccurred;
-        public event EventHandler GenerationCompleted;
+        public event EventHandler<string>? ChunkReceived;
+        public event EventHandler<string>? ErrorOccurred;
+        public event EventHandler? GenerationCompleted;
 
         // ── Generazione principale ────────────────────────────────────────────
 
@@ -115,10 +115,10 @@ namespace ArchitectFlow_AI.Services
             using var stream = await response.Content.ReadAsStreamAsync();
             using var reader = new System.IO.StreamReader(stream);
 
-            while (!reader.EndOfStream && !cancellationToken.IsCancellationRequested)
+            string? line;
+            while (!cancellationToken.IsCancellationRequested &&
+                   (line = await reader.ReadLineAsync()) != null)
             {
-                var line = await reader.ReadLineAsync();
-                if (line == null) break;
                 if (!line.StartsWith("data: ")) continue;
 
                 var data = line.Substring(6).Trim();

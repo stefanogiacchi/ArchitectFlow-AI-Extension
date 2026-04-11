@@ -1,12 +1,15 @@
+using ArchitectFlow_AI;
+using ArchitectFlow_AI.ToolWindows;
+using ArchitectFlow_AI.Services;
+using Microsoft.VisualStudio;
+using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio.Shell.Interop;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.Design;
 using System.IO;
 using System.Runtime.InteropServices;
-using ArchitectFlow_AI;
-using Microsoft.VisualStudio;
-using Microsoft.VisualStudio.Shell;
-using Microsoft.VisualStudio.Shell.Interop;
+using System.Threading.Tasks;
 using Task = System.Threading.Tasks.Task;
 
 namespace ArchitectFlow_AI.Commands
@@ -66,7 +69,7 @@ namespace ArchitectFlow_AI.Commands
         {
             ThreadHelper.ThrowIfNotOnUIThread();
             var cmd = (OleMenuCommand)sender;
-            var selectedFolders = GetSelectedFolderPaths();
+            var selectedFolders = SolutionExplorerHelper.GetSelectedFolders();
             cmd.Visible = selectedFolders.Count > 0;
             cmd.Text = selectedFolders.Count > 1
                 ? $"Aggiungi {selectedFolders.Count} cartelle a ArchitectFlow"
@@ -79,22 +82,25 @@ namespace ArchitectFlow_AI.Commands
         {
             ThreadHelper.ThrowIfNotOnUIThread();
 
-            var files = GetSelectedFilesWithProject();
+            var files = SolutionExplorerHelper.GetSelectedFiles();
             if (files.Count == 0) return;
 
-            int added = _af.ReferenceFileManager.AddRange(files);
+            // 1. Aggiunta all'istanza globale (quella che il Bridge userà dopo)
+            int added = ArchitectFlowPackage.Instance.ReferenceFileManager.AddRange(files);
 
-            string msg = added == 1
-                ? $"✓ File aggiunto come riferimento ArchitectFlow."
-                : $"✓ {added} file aggiunti come riferimento ArchitectFlow.";
-
-            if (added == 0)
-                msg = "I file selezionati sono già tutti nei riferimenti.";
-
+            // 2. Messaggio all'utente
+            string msg = added == 1 ? "✓ File aggiunto." : $"✓ {added} file aggiunti.";
+            if (added == 0) msg = "File già presenti.";
             ShowInfoBar(msg);
 
-            // Apri il Tool Window per mostrare i reference aggiornati
-            _ = _package.JoinableTaskFactory.RunAsync(() => _af.ShowToolWindowAsync());
+            // 3. AGGIORNAMENTO UI (Sincronizzazione forzata)
+            //    Usa GetOrCreateToolWindowAsync che chiama EnsureInitialized()
+            //    sul controllo, garantendo che il ViewModel sia sempre agganciato
+            //    all'istanza globale di ReferenceFileManager.
+            _package.JoinableTaskFactory.RunAsync(async () =>
+            {
+                await _af.GetOrCreateToolWindowAsync();
+            });
         }
 
         private void OnAddFolderExecute(object sender, EventArgs e)
@@ -102,7 +108,7 @@ namespace ArchitectFlow_AI.Commands
             ThreadHelper.ThrowIfNotOnUIThread();
 
             int totalAdded = 0;
-            foreach (var (path, proj) in GetSelectedFoldersWithProject())
+            foreach (var (path, proj) in SolutionExplorerHelper.GetSelectedFolders())
             {
                 totalAdded += _af.ReferenceFileManager.AddFolder(path, proj);
             }
@@ -117,130 +123,16 @@ namespace ArchitectFlow_AI.Commands
 
         // ── Lettura selezione dalla Solution Explorer ─────────────────────────
 
-        /// <summary>
-        /// Usa IVsMonitorSelection per recuperare TUTTI gli item selezionati,
-        /// incluse le selezioni multiple con Ctrl+Click.
-        /// </summary>
-        private List<(string FullPath, string ProjectName)> GetSelectedFilesWithProject()
-        {
-            ThreadHelper.ThrowIfNotOnUIThread();
-            var result = new List<(string, string)>();
-
-            var monSel = Package.GetGlobalService(typeof(SVsShellMonitorSelection))
-                as IVsMonitorSelection;
-            if (monSel == null) return result;
-
-            monSel.GetCurrentSelection(
-                out var hierarchy, out var itemId,
-                out var multiSelect, out _);
-
-            if (multiSelect != null)
-            {
-                // Multi-selezione: itera su tutti gli item selezionati
-                uint[] itemIds = new uint[1];
-                IVsHierarchy[] hierarchies = new IVsHierarchy[1];
-                int fetched;
-
-                while (true)
-                {
-                    Marshal.ThrowExceptionForHR(
-                        multiSelect.GetSelectedItems(0, 1, hierarchies, itemIds, out fetched));
-                    if (fetched == 0) break;
-
-                    var path = GetItemPath(hierarchies[0], itemIds[0]);
-                    var proj = GetProjectName(hierarchies[0]);
-
-                    if (!string.IsNullOrEmpty(path) && File.Exists(path))
-                        result.Add((path, proj));
-                }
-            }
-            else if (hierarchy != null && itemId != VSConstants.VSITEMID_NIL)
-            {
-                // Selezione singola
-                var path = GetItemPath(hierarchy, itemId);
-                var proj = GetProjectName(hierarchy);
-                if (!string.IsNullOrEmpty(path) && File.Exists(path))
-                    result.Add((path, proj));
-            }
-
-            return result;
-        }
-
         private List<string> GetSelectedFilePaths()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            var files = GetSelectedFilesWithProject();
+            var files = SolutionExplorerHelper.GetSelectedFiles();
             var paths = new List<string>();
             foreach (var (p, _) in files) paths.Add(p);
             return paths;
         }
 
-        private List<(string FolderPath, string ProjectName)> GetSelectedFoldersWithProject()
-        {
-            ThreadHelper.ThrowIfNotOnUIThread();
-            var result = new List<(string, string)>();
-
-            var monSel = Package.GetGlobalService(typeof(SVsShellMonitorSelection))
-                as IVsMonitorSelection;
-            if (monSel == null) return result;
-
-            monSel.GetCurrentSelection(
-                out var hierarchy, out var itemId,
-                out var multiSelect, out _);
-
-            if (multiSelect != null)
-            {
-                uint[] itemIds = new uint[1];
-                IVsHierarchy[] hierarchies = new IVsHierarchy[1];
-
-                while (true)
-                {
-                    multiSelect.GetSelectedItems(0, 1, hierarchies, itemIds, out int fetched);
-                    if (fetched == 0) break;
-
-                    var path = GetItemPath(hierarchies[0], itemIds[0]);
-                    var proj = GetProjectName(hierarchies[0]);
-
-                    if (!string.IsNullOrEmpty(path) && Directory.Exists(path))
-                        result.Add((path, proj));
-                }
-            }
-            else if (hierarchy != null && itemId != VSConstants.VSITEMID_NIL)
-            {
-                var path = GetItemPath(hierarchy, itemId);
-                var proj = GetProjectName(hierarchy);
-                if (!string.IsNullOrEmpty(path) && Directory.Exists(path))
-                    result.Add((path, proj));
-            }
-
-            return result;
-        }
-
-        private List<string> GetSelectedFolderPaths()
-        {
-            ThreadHelper.ThrowIfNotOnUIThread();
-            var folders = GetSelectedFoldersWithProject();
-            var paths = new List<string>();
-            foreach (var (p, _) in folders) paths.Add(p);
-            return paths;
-        }
-
         // ── Helpers ───────────────────────────────────────────────────────────
-
-        private static string GetItemPath(IVsHierarchy hierarchy, uint itemId)
-        {
-            ThreadHelper.ThrowIfNotOnUIThread();
-            hierarchy.GetCanonicalName(itemId, out string path);
-            return path;
-        }
-
-        private static string GetProjectName(IVsHierarchy hierarchy)
-        {
-            ThreadHelper.ThrowIfNotOnUIThread();
-            hierarchy.GetProperty(VSConstants.VSITEMID_ROOT,
-                (int)__VSHPROPID.VSHPROPID_Name, out object name);
-            return name?.ToString() ?? string.Empty;
-        }
 
         private static void ShowInfoBar(string message)
         {

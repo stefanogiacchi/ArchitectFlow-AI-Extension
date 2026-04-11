@@ -1,0 +1,114 @@
+using System;
+using System.Globalization;
+using System.Windows;
+using System.Windows.Data;
+
+namespace ArchitectFlow_AI.ToolWindows
+{
+    /// <summary>Linguaggio → emoji icona.</summary>
+    public class LanguageToIconConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            return (value as string) switch
+            {
+                "csharp" => "🔷",
+                "vbnet" => "🔵",
+                "typescript" => "🟦",
+                "javascript" => "🟡",
+                "python" => "🐍",
+                "java" => "☕",
+                "go" => "🐹",
+                "rust" => "🦀",
+                "cpp" => "⚙",
+                "sql" => "🗃",
+                "json" => "{ }",
+                "yaml" => "📋",
+                "xml" => "📄",
+                "razor" => "🪥",
+                "markdown" => "📝",
+                "html" => "🌐",
+                "css" => "🎨",
+                "powershell" => "💙",
+                "bash" => "🐚",
+                _ => "📄",
+            };
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+            => Binding.DoNothing;
+    }
+
+    /// <summary>int → Visible quando > 0, Collapsed altrimenti.</summary>
+    public class CountToVisibilityConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+            => (value is int n && n > 0) ? Visibility.Visible : Visibility.Collapsed;
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+            => Binding.DoNothing;
+    }
+
+    /// <summary>int → Collapsed quando > 0, Visible altrimenti (stato vuoto).</summary>
+    public class InverseCountToVisibilityConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+            => (value is int n && n == 0) ? Visibility.Visible : Visibility.Collapsed;
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+            => Binding.DoNothing;
+    }
+
+    /// <summary>
+    /// bool → Visibility.
+    /// ConverterParameter="inverse" → inverte la logica.
+    /// </summary>
+    public class BoolToVisibilityConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            bool flag = value is bool b && b;
+            bool inverse = parameter?.ToString() == "inverse";
+            return (flag ^ inverse) ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+            => Binding.DoNothing;
+    }
+
+    /// <summary>
+    /// Calcola la larghezza in pixel della barra di progresso del loop agente.
+    /// MultiBinding: [ iteration (int), maxIterations (int), containerWidth (double) ] → double
+    /// </summary>
+    public class ProgressWidthConverter : IMultiValueConverter
+    {
+        public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
+        {
+            // 1. Verifica che i valori siano presenti e validi per WPF
+            if (values == null || values.Length < 3) return 0.0;
+
+            // Controllo fondamentale: se i dati non sono ancora pronti, restituisci 0
+            if (values[0] == DependencyProperty.UnsetValue ||
+                values[1] == DependencyProperty.UnsetValue ||
+                values[2] == DependencyProperty.UnsetValue)
+                return 0.0;
+
+            // 2. Parsing sicuro dei valori
+            double iteration = System.Convert.ToDouble(values[0] ?? 0);
+            double maxIter = System.Convert.ToDouble(values[1] ?? 1);
+            double container = System.Convert.ToDouble(values[2] ?? 0);
+
+            // 3. Gestione casi limite (divisione per zero o container non pronto)
+            if (maxIter <= 0) return 0.0;
+            if (double.IsNaN(container) || container < 0) return 0.0;
+
+            // 4. Calcolo del ratio con clamp (0.0 - 1.0)
+            double ratio = Math.Min(Math.Max(iteration / maxIter, 0.0), 1.0);
+
+            return container * ratio;
+        }
+
+        public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
+            => throw new NotImplementedException();
+    }
+}
