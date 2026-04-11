@@ -1,0 +1,11 @@
+<Project>
+  <!--
+    Import VSSDK targets AFTER the .NET SDK targets.
+    Directory.Build.targets is imported last in the MSBuild evaluation order,
+    so the VSSDK's PrepareForRunDependsOn additions (CreateVsixContainer,
+    DeployVsixExtensionFiles, GeneratePkgDef, etc.) won't be overwritten
+    by Microsoft.Common.CurrentVersion.targets.
+  -->
+  <Import Project="$(VSToolsPath)\VSSDK\Microsoft.VsSDK.targets"
+          Condition="'$(VSToolsPath)' != '' and Exists('$(VSToolsPath)\VSSDK\Microsoft.VsSDK.targets')" />
+</Project>

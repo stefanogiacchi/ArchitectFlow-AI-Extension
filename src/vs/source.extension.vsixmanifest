@@ -37,14 +37,18 @@ Modalità di generazione:
         <Icon>Resources\logo.png</Icon>
 
         <Tags>CQRS, Dapper, Mediator, AI, scaffolding, code generation, Claude, Anthropic</Tags>
-
-        <GettingStartedGuide>https://github.com/stefanogiacchi/ArchitectFlow-AI-Extension/blob/main/README.md</GettingStartedGuide>
     </Metadata>
 
     <Installation>
-        <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[17.0,]"/>
-        <InstallationTarget Id="Microsoft.VisualStudio.Professional" Version="[17.0,]"/>
-        <InstallationTarget Id="Microsoft.VisualStudio.Enterprise" Version="[17.0,]"/>
+        <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[17.0,]">
+            <ProductArchitecture>amd64</ProductArchitecture>
+        </InstallationTarget>
+        <InstallationTarget Id="Microsoft.VisualStudio.Professional" Version="[17.0,]">
+            <ProductArchitecture>amd64</ProductArchitecture>
+        </InstallationTarget>
+        <InstallationTarget Id="Microsoft.VisualStudio.Enterprise" Version="[17.0,]">
+            <ProductArchitecture>amd64</ProductArchitecture>
+        </InstallationTarget>
     </Installation>
 
     <Dependencies>

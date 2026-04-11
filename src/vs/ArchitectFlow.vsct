@@ -69,6 +69,12 @@
         <Parent guid="guidSHLMainMenu" id="IDM_VS_MENU_TOOLS"/>
       </Group>
 
+      <!-- Gruppo in View > Other Windows (IDM_VS_CSCD_WINDOWS) -->
+      <Group guid="guidArchitectFlowCmdSet" id="grpArchitectFlowViewOtherWin"
+             priority="0x0100">
+        <Parent guid="guidSHLMainMenu" id="IDM_VS_CSCD_WINDOWS"/>
+      </Group>
+
     </Groups>
 
     <!-- ════════════════════════════════════════════════════════════════
@@ -178,6 +184,14 @@
 
   </Commands>
 
+  <!-- COMMAND PLACEMENTS -->
+  <CommandPlacements>
+    <CommandPlacement guid="guidArchitectFlowCmdSet" id="cmdOpenArchitectFlow"
+                      priority="0x0100">
+      <Parent guid="guidArchitectFlowCmdSet" id="grpArchitectFlowViewOtherWin"/>
+    </CommandPlacement>
+  </CommandPlacements>
+
   <!-- ════════════════════════════════════════════════════════════════════
          SYMBOLS — GUID e ID numerici (devono corrispondere al .cs)
          ════════════════════════════════════════════════════════════════════ -->
@@ -196,7 +210,8 @@
       <IDSymbol name="grpArchitectFlowFolder"      value="0x1011"/>
       <IDSymbol name="grpArchitectFlowProject"     value="0x1012"/>
       <IDSymbol name="grpArchitectFlowMultiSelect" value="0x1013"/>
-      <IDSymbol name="grpArchitectFlowTools"       value="0x1014"/>
+      <IDSymbol name="grpArchitectFlowTools"          value="0x1014"/>
+      <IDSymbol name="grpArchitectFlowViewOtherWin"   value="0x1015"/>
 
       <!-- Commands -->
       <IDSymbol name="cmdOpenArchitectFlow"           value="0x0103"/>
