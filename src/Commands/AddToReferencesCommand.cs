@@ -14,14 +14,6 @@ using Task = System.Threading.Tasks.Task;
 
 namespace ArchitectFlow_AI.Commands
 {
-    /// <summary>
-    /// Comando "Aggiungi a ArchitectFlow References" nel menu contestuale della Solution Explorer.
-    ///
-    /// Supporta:
-    ///  - Click singolo su un file
-    ///  - Multi-selezione (Ctrl+Click / Shift+Click) di più file
-    ///  - Click su una cartella (aggiunge ricorsivamente tutti i file sorgente)
-    /// </summary>
     internal sealed class AddToReferencesCommand
     {
         private readonly AsyncPackage _package;
@@ -32,13 +24,11 @@ namespace ArchitectFlow_AI.Commands
             _package = package;
             _af = package as ArchitectFlowPackage;
 
-            // ── Comando per FILE ──────────────────────────────────────────────
             var fileCmd = new OleMenuCommand(OnAddFilesExecute,
                 new CommandID(PackageGuids.CommandSet, PackageCommandIds.AddToReferences));
             fileCmd.BeforeQueryStatus += OnQueryStatus_Files;
             commandService.AddCommand(fileCmd);
 
-            // ── Comando per CARTELLE ──────────────────────────────────────────
             var folderCmd = new OleMenuCommand(OnAddFolderExecute,
                 new CommandID(PackageGuids.CommandSet, PackageCommandIds.AddFolderToReferences));
             folderCmd.BeforeQueryStatus += OnQueryStatus_Folders;
@@ -51,8 +41,6 @@ namespace ArchitectFlow_AI.Commands
             var cs = (OleMenuCommandService)await package.GetServiceAsync(typeof(IMenuCommandService));
             new AddToReferencesCommand(package, cs);
         }
-
-        // ── Visibilità ────────────────────────────────────────────────────────
 
         private void OnQueryStatus_Files(object sender, EventArgs e)
         {
@@ -76,8 +64,6 @@ namespace ArchitectFlow_AI.Commands
                 : "Aggiungi cartella a ArchitectFlow";
         }
 
-        // ── Esecuzione ────────────────────────────────────────────────────────
-
         private void OnAddFilesExecute(object sender, EventArgs e)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
@@ -85,18 +71,12 @@ namespace ArchitectFlow_AI.Commands
             var files = SolutionExplorerHelper.GetSelectedFiles();
             if (files.Count == 0) return;
 
-            // 1. Aggiunta all'istanza globale (quella che il Bridge userà dopo)
             int added = ArchitectFlowPackage.Instance.ReferenceFileManager.AddRange(files);
 
-            // 2. Messaggio all'utente
             string msg = added == 1 ? "✓ File aggiunto." : $"✓ {added} file aggiunti.";
             if (added == 0) msg = "File già presenti.";
             ShowInfoBar(msg);
 
-            // 3. AGGIORNAMENTO UI (Sincronizzazione forzata)
-            //    Usa GetOrCreateToolWindowAsync che chiama EnsureInitialized()
-            //    sul controllo, garantendo che il ViewModel sia sempre agganciato
-            //    all'istanza globale di ReferenceFileManager.
             _package.JoinableTaskFactory.RunAsync(async () =>
             {
                 await _af.GetOrCreateToolWindowAsync();
@@ -121,8 +101,6 @@ namespace ArchitectFlow_AI.Commands
             _ = _package.JoinableTaskFactory.RunAsync(() => _af.ShowToolWindowAsync());
         }
 
-        // ── Lettura selezione dalla Solution Explorer ─────────────────────────
-
         private List<string> GetSelectedFilePaths()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
@@ -131,8 +109,6 @@ namespace ArchitectFlow_AI.Commands
             foreach (var (p, _) in files) paths.Add(p);
             return paths;
         }
-
-        // ── Helpers ───────────────────────────────────────────────────────────
 
         private static void ShowInfoBar(string message)
         {

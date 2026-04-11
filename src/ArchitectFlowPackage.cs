@@ -12,46 +12,31 @@ using Task = System.Threading.Tasks.Task;
 
 namespace ArchitectFlow_AI
 {
-    /// <summary>
-    /// ArchitectFlow AI — VSIX Package
-    /// Automatizza lo scaffolding CQRS/Dapper/Mediator con binding di file di riferimento
-    /// dalla Solution Explorer.
-    /// </summary>
     [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
     [Guid(PackageGuids.PackageGuidString)]
     [ProvideMenuResource("Menus.ctmenu", 1)]
-    // Tool Window principale
     [ProvideToolWindow(typeof(ArchitectFlowToolWindow),
         Style = VsDockStyle.Tabbed,
         Window = EnvDTE.Constants.vsWindowKindSolutionExplorer,
         Orientation = ToolWindowOrientation.Right)]
-    // Comandi su Solution Explorer (multi-select)
     [ProvideAutoLoad(VSConstants.UICONTEXT.SolutionExists_string,
         PackageAutoLoadFlags.BackgroundLoad)]
-    // Opzioni estensione
     [ProvideOptionPage(typeof(ArchitectFlowOptionsPage),
         "ArchitectFlow AI", "General", 0, 0, true)]
     public sealed class ArchitectFlowPackage : AsyncPackage
     {
-        /// <summary>Singleton accessibile dall'intera estensione.</summary>
         public static ArchitectFlowPackage Instance { get; private set; }
 
-        /// <summary>Servizio che gestisce i file di riferimento selezionati.</summary>
         public ReferenceFileManager ReferenceFileManager { get; private set; }
 
-        /// <summary>Servizio per le chiamate all'API Claude.</summary>
         public ClaudeApiService ClaudeApiService { get; private set; }
 
-        /// <summary>Bridge verso GitHub Copilot Enterprise — inietta prompt e attende generazione.</summary>
         public CopilotBridgeService CopilotBridge { get; private set; }
 
-        /// <summary>Monitora la build VS e raccoglie gli errori di compilazione.</summary>
         public BuildOrchestratorService BuildOrchestrator { get; private set; }
 
-        /// <summary>Logger verso il riquadro Output di VS.</summary>
         public OutputWindowLogger OutputLogger { get; private set; }
 
-        /// <summary>Orchestratore del loop agente: Copilot → Build → Errori → Copilot…</summary>
         public AgentLoopService AgentLoop { get; private set; }
 
         protected override async Task InitializeAsync(
@@ -60,7 +45,6 @@ namespace ArchitectFlow_AI
         {
             await base.InitializeAsync(cancellationToken, progress);
 
-            // Passa al thread UI per registrare i comandi e i servizi
             await JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
 
             Instance = this;
@@ -76,16 +60,13 @@ namespace ArchitectFlow_AI
             AgentLoop = new AgentLoopService(
                 CopilotBridge, BuildOrchestrator, ReferenceFileManager, this);
 
-            // Specchia il log del loop anche nella Output Window di VS
             AgentLoop.LogMessage += (_, msg) => OutputLogger.Log(msg);
 
-            // Registra tutti i comandi
             await AddToReferencesCommand.InitializeAsync(this);
             await AddFolderToReferencesCommand.InitializeAsync(this);
             await ClearReferencesCommand.InitializeAsync(this);
             await OpenArchitectFlowCommand.InitializeAsync(this);
 
-            // Aggancia l'evento di chiusura soluzione per pulire i reference
             var solution = (IVsSolution)await GetServiceAsync(typeof(SVsSolution));
             if (solution != null)
             {
@@ -93,18 +74,11 @@ namespace ArchitectFlow_AI
             }
         }
 
-        /// <summary>
-        /// Ottiene o crea il Tool Window principale.
-        /// Garantisce che il controllo WPF sia inizializzato con il
-        /// ReferenceFileManager del Package (unico punto di verità).
-        /// </summary>
         public async Task<ArchitectFlowToolWindow> GetOrCreateToolWindowAsync()
         {
             await JoinableTaskFactory.SwitchToMainThreadAsync();
             var window = (ArchitectFlowToolWindow)FindToolWindow(typeof(ArchitectFlowToolWindow), 0, true);
 
-            // Forza l'inizializzazione del controllo WPF se non ancora avvenuta
-            // (es. finestra creata da VS prima che il Package fosse pronto).
             if (window?.Content is ArchitectFlowToolWindowControl control)
             {
                 control.EnsureInitialized();
@@ -113,9 +87,6 @@ namespace ArchitectFlow_AI
             return window;
         }
 
-        /// <summary>
-        /// Mostra il Tool Window principale.
-        /// </summary>
         public async Task ShowToolWindowAsync()
         {
             await JoinableTaskFactory.SwitchToMainThreadAsync();
@@ -127,7 +98,6 @@ namespace ArchitectFlow_AI
         }
     }
 
-    /// <summary>Costanti GUID centralizzate per l'estensione.</summary>
     internal static class PackageGuids
     {
         public const string PackageGuidString = "a1b2c3d4-e5f6-7890-abcd-ef1234567890";
@@ -137,7 +107,6 @@ namespace ArchitectFlow_AI
         public static readonly Guid CommandSet = new Guid(CommandSetGuidString);
     }
 
-    /// <summary>ID numerici dei comandi (devono corrispondere al .vsct).</summary>
     internal static class PackageCommandIds
     {
         public const int AddToReferences = 0x0100;
@@ -147,7 +116,6 @@ namespace ArchitectFlow_AI
         public const int RemoveReference = 0x0104;
     }
 
-    /// <summary>Pagina di opzioni estensione (API Key, Model, ecc.).</summary>
     public class ArchitectFlowOptionsPage : Microsoft.VisualStudio.Shell.DialogPage
     {
         [System.ComponentModel.Category("API")]
@@ -188,7 +156,6 @@ namespace ArchitectFlow_AI
         public int MaxReferenceFiles { get; set; } = 30;
     }
 
-    /// <summary>Gestisce eventi di soluzione (es. chiusura) per resettare i reference.</summary>
     internal class SolutionEventsHandler : IVsSolutionEvents
     {
         private readonly ReferenceFileManager _manager;
@@ -200,7 +167,6 @@ namespace ArchitectFlow_AI
             return VSConstants.S_OK;
         }
 
-        // Implementazioni vuote degli altri eventi
         public int OnAfterLoadProject(IVsHierarchy pStubHierarchy, IVsHierarchy pRealHierarchy) => VSConstants.S_OK;
         public int OnAfterOpenProject(IVsHierarchy pHierarchy, int fAdded) => VSConstants.S_OK;
         public int OnAfterOpenSolution(object pUnkReserved, int fNewSolution) => VSConstants.S_OK;

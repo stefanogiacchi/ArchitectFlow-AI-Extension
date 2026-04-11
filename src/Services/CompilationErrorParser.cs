@@ -7,7 +7,6 @@ using Microsoft.VisualStudio.Shell.Interop;
 
 namespace ArchitectFlow_AI.Services
 {
-    /// <summary>Errore di compilazione estratto dalla Error List di VS.</summary>
     public class CompilationError
     {
         public string Code        { get; set; }   // CS0246
@@ -26,16 +25,8 @@ namespace ArchitectFlow_AI.Services
             $"{FileName}({Line},{Column}): {(IsError ? "error" : "warning")} {Code}: {Message}";
     }
 
-    /// <summary>
-    /// Legge gli errori correnti dalla Error List di Visual Studio
-    /// tramite <see cref="IVsErrorList"/> / <see cref="SVsErrorList"/>.
-    /// </summary>
     public static class CompilationErrorParser
     {
-        /// <summary>
-        /// Raccoglie tutti gli errori (e opzionalmente i warning) dalla Error List.
-        /// Deve essere chiamato sul thread UI.
-        /// </summary>
         public static IReadOnlyList<CompilationError> GetCurrentErrors(
             IServiceProvider serviceProvider,
             bool includeWarnings = false)
@@ -44,7 +35,6 @@ namespace ArchitectFlow_AI.Services
 
             var result = new List<CompilationError>();
 
-            // Usa IVsTaskList per iterare sulla Error List
             var taskList = serviceProvider.GetService(typeof(SVsTaskList)) as IVsTaskList;
             if (taskList == null) return result;
 
@@ -61,7 +51,6 @@ namespace ArchitectFlow_AI.Services
                 var item = items[0];
                 if (item == null) continue;
 
-                // Filtra per categoria
                 var cats = new VSTASKCATEGORY[1];
                 item.Category(cats);
                 if (cats[0] != VSTASKCATEGORY.CAT_BUILDCOMPILE) continue;
@@ -80,7 +69,6 @@ namespace ArchitectFlow_AI.Services
                 item.Line(out int line);
                 item.Column(out int column);
 
-                // Estrai il codice errore (es. CS0246) dal testo
                 string code = ExtractErrorCode(text);
 
                 result.Add(new CompilationError
@@ -100,9 +88,6 @@ namespace ArchitectFlow_AI.Services
             return result;
         }
 
-        /// <summary>
-        /// Formatta la lista di errori come blocco testo da iniettare nel prompt Copilot.
-        /// </summary>
         public static string FormatForPrompt(
             IReadOnlyList<CompilationError> errors,
             int iteration)
@@ -117,7 +102,6 @@ namespace ArchitectFlow_AI.Services
             sb.AppendLine();
             sb.AppendLine("```");
 
-            // Raggruppa per file
             foreach (var grp in errors.GroupBy(e => e.FileName))
             {
                 sb.AppendLine($"// {grp.Key}");
@@ -136,7 +120,6 @@ namespace ArchitectFlow_AI.Services
         private static string ExtractErrorCode(string text)
         {
             if (string.IsNullOrEmpty(text)) return string.Empty;
-            // Pattern: CS0246, NETSDK1022, etc.
             var match = System.Text.RegularExpressions.Regex.Match(
                 text, @"\b([A-Z]{1,8}\d{3,5})\b");
             return match.Success ? match.Value : string.Empty;

@@ -5,7 +5,6 @@ using Task = System.Threading.Tasks.Task;
 
 namespace ArchitectFlow_AI.Commands
 {
-    /// <summary>Comando "Apri ArchitectFlow AI" — accessibile da menu Tools e dal context menu.</summary>
     internal sealed class OpenArchitectFlowCommand
     {
         private readonly AsyncPackage _package;
@@ -34,7 +33,6 @@ namespace ArchitectFlow_AI.Commands
         }
     }
 
-    /// <summary>Comando "Svuota tutti i riferimenti ArchitectFlow".</summary>
     internal sealed class ClearReferencesCommand
     {
         private readonly AsyncPackage _package;
@@ -75,17 +73,15 @@ namespace ArchitectFlow_AI.Commands
                 Microsoft.VisualStudio.Shell.Interop.OLEMSGBUTTON.OLEMSGBUTTON_YESNO,
                 Microsoft.VisualStudio.Shell.Interop.OLEMSGDEFBUTTON.OLEMSGDEFBUTTON_SECOND);
 
-            if (result == 6) // IDYES
+            if (result == 6)
                 mgr.ClearAll();
         }
     }
 
-    /// <summary>Stub per AddFolderToReferencesCommand — la logica reale è in AddToReferencesCommand.</summary>
     internal sealed class AddFolderToReferencesCommand
     {
         public static async Task InitializeAsync(AsyncPackage package)
         {
-            // Registrato dentro AddToReferencesCommand — questo stub evita errori di inizializzazione.
             await System.Threading.Tasks.Task.CompletedTask;
         }
     }

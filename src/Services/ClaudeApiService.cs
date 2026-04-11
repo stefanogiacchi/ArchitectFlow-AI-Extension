@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -11,10 +10,6 @@ using Microsoft.VisualStudio.Shell;
 
 namespace ArchitectFlow_AI.Services
 {
-    /// <summary>
-    /// Servizio che chiama l'API Claude (Anthropic) con streaming SSE.
-    /// Inietta il contesto vincolante dei file di riferimento nel system prompt.
-    /// </summary>
     public class ClaudeApiService
     {
         private readonly AsyncPackage _package;
@@ -28,17 +23,10 @@ namespace ArchitectFlow_AI.Services
             _package = package;
         }
 
-        // ── Evento per lo streaming del testo ────────────────────────────────
         public event EventHandler<string>? ChunkReceived;
         public event EventHandler<string>? ErrorOccurred;
         public event EventHandler? GenerationCompleted;
 
-        // ── Generazione principale ────────────────────────────────────────────
-
-        /// <summary>
-        /// Invia il prompt all'API Claude con i reference file come contesto vincolante.
-        /// Lo streaming avviene via evento <see cref="ChunkReceived"/>.
-        /// </summary>
         public async Task GenerateAsync(
             string userPrompt,
             string generationMode,
@@ -57,7 +45,6 @@ namespace ArchitectFlow_AI.Services
 
             var model = options?.Model ?? "claude-sonnet-4-20250514";
 
-            // Costruisce il system prompt con il contesto dei file di riferimento
             var referenceContext = ArchitectFlowPackage.Instance.ReferenceFileManager
                 .BuildContextPayload();
             var systemPrompt = BuildSystemPrompt(generationMode, referenceContext);
@@ -99,15 +86,12 @@ namespace ArchitectFlow_AI.Services
             }
             catch (OperationCanceledException)
             {
-                // Generazione annullata dall'utente — non un errore
             }
             catch (Exception ex)
             {
                 ErrorOccurred?.Invoke(this, $"Errore di rete: {ex.Message}");
             }
         }
-
-        // ── SSE streaming parser ──────────────────────────────────────────────
 
         private async Task ReadStreamAsync(HttpResponseMessage response,
             CancellationToken cancellationToken)
@@ -150,14 +134,11 @@ namespace ArchitectFlow_AI.Services
                 }
                 catch (JsonException)
                 {
-                    // Chunk malformato — ignoralo
                 }
             }
 
             GenerationCompleted?.Invoke(this, EventArgs.Empty);
         }
-
-        // ── System prompt builder ─────────────────────────────────────────────
 
         private static string BuildSystemPrompt(string mode, string referenceContext)
         {
