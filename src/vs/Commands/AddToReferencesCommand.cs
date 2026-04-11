@@ -37,6 +37,7 @@ namespace ArchitectFlow_AI.Commands
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(package.DisposalToken);
             var cs = (OleMenuCommandService)await package.GetServiceAsync(typeof(IMenuCommandService));
+            if (cs == null) return;
             new AddToReferencesCommand(package, cs);
         }
 

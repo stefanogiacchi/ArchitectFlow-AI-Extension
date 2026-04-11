@@ -1,6 +1,7 @@
 using System;
 using System.ComponentModel.Design;
 using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio.Shell.Interop;
 using Task = System.Threading.Tasks.Task;
 
 namespace ArchitectFlow_AI.Commands
@@ -21,6 +22,7 @@ namespace ArchitectFlow_AI.Commands
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(package.DisposalToken);
             var cs = (OleMenuCommandService)await package.GetServiceAsync(typeof(IMenuCommandService));
+            if (cs == null) return;
             new OpenArchitectFlowCommand(package, cs);
         }
 
@@ -28,7 +30,21 @@ namespace ArchitectFlow_AI.Commands
         {
             _ = _package.JoinableTaskFactory.RunAsync(async () =>
             {
-                await (ArchitectFlowPackage.Instance?.ShowToolWindowAsync() ?? Task.CompletedTask);
+                try
+                {
+                    var pkg = _package as ArchitectFlowPackage;
+                    if (pkg != null)
+                    {
+                        await pkg.ShowToolWindowAsync();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"[ArchitectFlow AI] OpenArchitectFlow failed: {ex}");
+                    ActivityLog.TryLogError("ArchitectFlow AI",
+                        $"OpenArchitectFlow command failed: {ex}");
+                }
             });
         }
     }
@@ -50,6 +66,7 @@ namespace ArchitectFlow_AI.Commands
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(package.DisposalToken);
             var cs = (OleMenuCommandService)await package.GetServiceAsync(typeof(IMenuCommandService));
+            if (cs == null) return;
             new ClearReferencesCommand(package, cs);
         }
 

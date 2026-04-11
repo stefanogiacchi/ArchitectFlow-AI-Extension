@@ -19,7 +19,7 @@ namespace ArchitectFlow_AI
         Style = VsDockStyle.Tabbed,
         Window = EnvDTE.Constants.vsWindowKindSolutionExplorer,
         Orientation = ToolWindowOrientation.Right)]
-    [ProvideAutoLoad(VSConstants.UICONTEXT.SolutionExists_string,
+    [ProvideAutoLoad(VSConstants.UICONTEXT.ShellInitialized_string,
         PackageAutoLoadFlags.BackgroundLoad)]
     [ProvideOptionPage(typeof(ArchitectFlowOptionsPage),
         "ArchitectFlow AI", "General", 0, 0, true)]
@@ -48,29 +48,42 @@ namespace ArchitectFlow_AI
             await JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
 
             Instance = this;
-            ReferenceFileManager = new ReferenceFileManager();
-            ClaudeApiService = new ClaudeApiService(this);
-            CopilotBridge = new CopilotBridgeService(this);
-            BuildOrchestrator = new BuildOrchestratorService(this);
-            await BuildOrchestrator.InitializeAsync();
 
-            OutputLogger = new OutputWindowLogger(this);
-            await OutputLogger.InitializeAsync();
-
-            AgentLoop = new AgentLoopService(
-                CopilotBridge, BuildOrchestrator, ReferenceFileManager, this);
-
-            AgentLoop.LogMessage += (_, msg) => OutputLogger.Log(msg);
-
+            // ── Register commands FIRST so menus work even if services fail ──
+            await OpenArchitectFlowCommand.InitializeAsync(this);
             await AddToReferencesCommand.InitializeAsync(this);
             await AddFolderToReferencesCommand.InitializeAsync(this);
             await ClearReferencesCommand.InitializeAsync(this);
-            await OpenArchitectFlowCommand.InitializeAsync(this);
 
-            var solution = (IVsSolution)await GetServiceAsync(typeof(SVsSolution));
-            if (solution != null)
+            // ── Initialize services (non-critical: wrap to avoid killing the package) ──
+            try
             {
-                solution.AdviseSolutionEvents(new SolutionEventsHandler(ReferenceFileManager), out _);
+                ReferenceFileManager = new ReferenceFileManager();
+                ClaudeApiService = new ClaudeApiService(this);
+                CopilotBridge = new CopilotBridgeService(this);
+                BuildOrchestrator = new BuildOrchestratorService(this);
+                await BuildOrchestrator.InitializeAsync();
+
+                OutputLogger = new OutputWindowLogger(this);
+                await OutputLogger.InitializeAsync();
+
+                AgentLoop = new AgentLoopService(
+                    CopilotBridge, BuildOrchestrator, ReferenceFileManager, this);
+
+                AgentLoop.LogMessage += (_, msg) => OutputLogger.Log(msg);
+
+                var solution = (IVsSolution)await GetServiceAsync(typeof(SVsSolution));
+                if (solution != null)
+                {
+                    solution.AdviseSolutionEvents(new SolutionEventsHandler(ReferenceFileManager), out _);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"[ArchitectFlow AI] Service initialization error: {ex}");
+                ActivityLog.TryLogError("ArchitectFlow AI",
+                    $"Service initialization failed: {ex}");
             }
         }
 
